@@ -22,15 +22,9 @@ import com.amadeusk.liftlog.data.PR
 
 private data class LeaderboardRow(
     val pr: PR,
-    val est1rmKg: Double,
+    val weightKg: Double,
 )
 
-/**
- * Simple local "leaderboard" based on your existing PR history.
- *
- * - Uses Epley estimate: 1RM = w * (1 + reps/30)
- * - Stores PR weights in kg (app already does this) and converts for display.
- */
 @Composable
 fun LeaderboardScreen(
     prs: List<PR>,
@@ -39,13 +33,9 @@ fun LeaderboardScreen(
 ) {
     val rows = remember(prs) {
         prs
-            .map { pr ->
-                val reps = pr.reps.coerceAtLeast(1)
-                val est1rmKg = pr.weight * (1.0 + (reps.toDouble() / 30.0))
-                LeaderboardRow(pr = pr, est1rmKg = est1rmKg)
-            }
+            .map { pr -> LeaderboardRow(pr = pr, weightKg = pr.weight) } // actual weight
             .sortedWith(
-                compareByDescending<LeaderboardRow> { it.est1rmKg }
+                compareByDescending<LeaderboardRow> { it.weightKg }
                     .thenByDescending { parsePrDateOrMin(it.pr.date) }
                     .thenByDescending { it.pr.id }
             )
@@ -63,7 +53,7 @@ fun LeaderboardScreen(
             style = MaterialTheme.typography.titleLarge
         )
         Text(
-            text = "Based on your best estimated 1RM from saved PRs.",
+            text = "Top lifts based on your heaviest recorded PRs.",
             style = MaterialTheme.typography.bodySmall
         )
 
@@ -82,8 +72,7 @@ fun LeaderboardScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(rows, key = { it.pr.id }) { row ->
-                val estDisplay = row.est1rmKg.toDisplayWeight(useKg)
-                val weightDisplay = row.pr.weight.toDisplayWeight(useKg)
+                val weightDisplay = row.weightKg.toDisplayWeight(useKg)
 
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -96,7 +85,7 @@ fun LeaderboardScreen(
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = "~${formatWeight(estDisplay, useKg)}",
+                                text = formatWeight(weightDisplay, useKg),
                                 style = MaterialTheme.typography.titleMedium
                             )
                         }
@@ -104,7 +93,7 @@ fun LeaderboardScreen(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Set: ${formatWeight(weightDisplay, useKg)} × ${row.pr.reps} reps",
+                            text = "Reps: ${row.pr.reps}",
                             style = MaterialTheme.typography.bodySmall
                         )
                         Text(
