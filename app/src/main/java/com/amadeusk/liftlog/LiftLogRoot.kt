@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -17,7 +18,7 @@ import com.amadeusk.liftlog.data.PR
 import com.amadeusk.liftlog.data.loadBodyWeightsFromFile
 import com.amadeusk.liftlog.data.saveBodyWeightsToFile
 
-private enum class TopPage { MAIN, INFO, LEADERBOARD }
+private enum class TopPage { MAIN, INFO, ANNOUNCEMENTS, LEADERBOARD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +33,7 @@ fun LiftLogRoot(viewModel: PRViewModel) {
 
     val exercises = uiState.prs.map { it.exercise }.distinct()
 
-    // always-available suggestions
+    // always-available core lifts + previous exercises
     val coreLifts = listOf("Bench Press", "Squat", "Deadlift")
     val exerciseSuggestions = (coreLifts + exercises).distinct()
 
@@ -50,7 +51,7 @@ fun LiftLogRoot(viewModel: PRViewModel) {
     var useKg by remember { mutableStateOf(true) }
     var showSettingsDialog by remember { mutableStateOf(false) }
 
-    // Top pages (main tabs vs info vs leaderboard)
+    // Top pages (main tabs vs info vs announcements vs leaderboard)
     var topPage by remember { mutableStateOf(TopPage.MAIN) }
 
     Scaffold(
@@ -58,15 +59,25 @@ fun LiftLogRoot(viewModel: PRViewModel) {
             CenterAlignedTopAppBar(
                 title = { Text("LiftLog") },
                 navigationIcon = {
-                    TextButton(
-                        onClick = {
-                            topPage = if (topPage == TopPage.MAIN) TopPage.INFO else TopPage.MAIN
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(
+                            onClick = {
+                                topPage = if (topPage == TopPage.MAIN) TopPage.INFO else TopPage.MAIN
+                            }
+                        ) {
+                            Text(if (topPage == TopPage.MAIN) "Info" else "Back")
                         }
-                    ) {
-                        Text(if (topPage == TopPage.MAIN) "Info" else "Back")
+
+                        // ✅ Announcements button to the RIGHT of Info (only show on MAIN)
+                        if (topPage == TopPage.MAIN) {
+                            IconButton(onClick = { topPage = TopPage.ANNOUNCEMENTS }) {
+                                Icon(Icons.Filled.Notifications, contentDescription = "Announcements")
+                            }
+                        }
                     }
                 },
                 actions = {
+                    // Leaderboard button (trophy-ish) next to settings
                     IconButton(
                         onClick = { topPage = TopPage.LEADERBOARD },
                         enabled = topPage != TopPage.LEADERBOARD
@@ -104,10 +115,14 @@ fun LiftLogRoot(viewModel: PRViewModel) {
                 .fillMaxSize()
         ) {
 
-            // If Info / Leaderboard is active, show only that screen
+            // If a top-level page is selected, show it and stop here
             when (topPage) {
                 TopPage.INFO -> {
                     InfoScreen()
+                    return@Column
+                }
+                TopPage.ANNOUNCEMENTS -> {
+                    AnnouncementsScreen(modifier = Modifier.fillMaxSize())
                     return@Column
                 }
                 TopPage.LEADERBOARD -> {
@@ -356,7 +371,8 @@ fun LiftLogRoot(viewModel: PRViewModel) {
         }
     }
 
-    // Settings dialog
+    // --- dialogs unchanged below, except we now pass exerciseSuggestions into PrDialog ---
+
     if (showSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
@@ -434,7 +450,7 @@ fun LiftLogRoot(viewModel: PRViewModel) {
         )
     }
 
-    // Bodyweight dialogs
+    // Bodyweight dialogs unchanged ...
     if (showAddBwDialog) {
         BodyWeightDialog(
             title = "Add bodyweight",
