@@ -1,21 +1,21 @@
-# LiftLog
+# PRyx
 
-LiftLog is a simple, offline, personal record (PR) and bodyweight tracking application for Android.  
-It is built using Kotlin and Jetpack Compose and focuses on clarity, speed, and minimal user interaction.
+PRyx is a simple, offline personal record (PR) and bodyweight tracking application for Android.  
+Built with Kotlin and Jetpack Compose, it focuses on clarity, speed, and minimal interaction—so you can log your progress without friction.
 
 ---
 
 ## Overview
 
-LiftLog allows users to log strength training data and visualize progress through clean, lightweight graphs.  
-All data is stored locally on the device using internal storage, ensuring full privacy and offline reliability.
+PRyx allows users to log strength training data and visualize progress through clean, lightweight graphs.  
+All data is stored **locally on the device** using internal storage, ensuring full privacy and reliable offline use.
 
 The application includes two primary tracking features:
 
 - Personal Records (PRs) for any exercise  
 - Daily bodyweight entries  
 
-Users can add, edit, delete, and filter their entries directly from the interface.
+Users can add, edit, delete, and filter entries directly from the interface.
 
 ---
 
@@ -28,7 +28,7 @@ Users can add, edit, delete, and filter their entries directly from the interfac
   - This month  
   - This year  
   - All time  
-- View progress on an auto-generated line graph for the selected exercise
+- View progress on an automatically generated line graph for the selected exercise
 
 ### Bodyweight Tracking
 - Log daily bodyweight with date  
@@ -37,33 +37,36 @@ Users can add, edit, delete, and filter their entries directly from the interfac
   - This month  
   - This year  
   - All time  
-- Graph automatically displays when enough data points exist
+- Graph displays automatically once enough data points are available
 
 ### User Interface
-- Jetpack Compose UI with Material 3 components  
-- Clean, minimal layout focused on ease of use  
-- Dialog-based forms for adding and editing data  
-- Floating action button for quickly creating new entries
+- Jetpack Compose UI using Material 3 components  
+- Clean, minimal layout focused on usability  
+- Dialog-based forms for adding and editing entries  
+- Floating action button for quick data entry
 
 ### Data Storage
-- Uses internal storage text files for persistence  
-- Separate files for PRs, bodyweight entries, and unit preferences  
-- All records stored locally with no network dependency
+- Uses Android internal storage for persistence  
+- Separate files for:
+  - PR entries  
+  - Bodyweight entries  
+  - Unit preferences  
+- No accounts, no cloud sync, and no network dependency
 
 ---
 
 ## Screenshots
 
-(Place images in `/screenshots` and update the paths if needed.)
+(Place images in `/screenshots` and update paths as needed.)
 
 - PRs screen  
-  `screenshots/liftlog_prs.png`
+  `screenshots/pryx_prs.png`
 
 - Add PR dialog  
-  `screenshots/liftlog_add_pr.png`
+  `screenshots/pryx_add_pr.png`
 
 - Bodyweight screen  
-  `screenshots/liftlog_bodyweight.png`
+  `screenshots/pryx_bodyweight.png`
 
 ---
 
@@ -73,9 +76,5 @@ Users can add, edit, delete, and filter their entries directly from the interfac
 - Jetpack Compose  
 - Material 3  
 - File-based persistence using Android internal storage  
-- Basic date operations via `java.time.LocalDate`  
+- Date handling via `java.time.LocalDate`  
 - Custom graph rendering using Compose `Canvas`
-
----
-
-
