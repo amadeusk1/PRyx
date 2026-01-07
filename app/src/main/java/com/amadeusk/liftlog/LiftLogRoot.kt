@@ -57,7 +57,7 @@ fun LiftLogRoot(viewModel: PRViewModel) {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("LiftLog") },
+                title = { Text("PRyx") },
                 navigationIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(

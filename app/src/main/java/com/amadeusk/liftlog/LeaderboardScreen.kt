@@ -72,7 +72,7 @@ fun LeaderboardScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(rows, key = { it.pr.id }) { row ->
-                val weightDisplay = row.weightKg.toDisplayWeight(useKg)
+
 
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -85,7 +85,7 @@ fun LeaderboardScreen(
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = formatWeight(weightDisplay, useKg),
+                                text = formatWeight(row.weightKg, useKg),
                                 style = MaterialTheme.typography.titleMedium
                             )
                         }
