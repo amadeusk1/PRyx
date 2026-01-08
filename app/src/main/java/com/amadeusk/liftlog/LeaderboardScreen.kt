@@ -33,7 +33,19 @@ fun LeaderboardScreen(
 ) {
     val rows = remember(prs) {
         prs
-            .map { pr -> LeaderboardRow(pr = pr, weightKg = pr.weight) } // actual weight
+            .groupBy { it.exercise.trim().lowercase() } // one group per lift name
+            .mapNotNull { (_, exercisePrs) ->
+                // Pick the single "best" PR for that exercise:
+                // 1) heaviest weight
+                // 2) most recent date
+                // 3) highest id
+                val best = exercisePrs.maxWithOrNull(
+                    compareBy<PR> { it.weight }
+                        .thenBy { parsePrDateOrMin(it.date) }
+                        .thenBy { it.id }
+                )
+                best?.let { pr -> LeaderboardRow(pr = pr, weightKg = pr.weight) }
+            }
             .sortedWith(
                 compareByDescending<LeaderboardRow> { it.weightKg }
                     .thenByDescending { parsePrDateOrMin(it.pr.date) }
@@ -42,6 +54,7 @@ fun LeaderboardScreen(
             .take(25)
     }
 
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -49,7 +62,7 @@ fun LeaderboardScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Leaderboard",
+            text = "All Time Stats",
             style = MaterialTheme.typography.titleLarge
         )
         Text(
@@ -106,9 +119,8 @@ fun LeaderboardScreen(
         }
 
         Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Tip: this is local-only for now (no online ranking yet).",
-            style = MaterialTheme.typography.labelSmall
-        )
+
+
+
     }
 }
