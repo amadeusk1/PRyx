@@ -19,11 +19,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.amadeusk.liftlog.data.PR
+import kotlin.math.abs
 
 private data class LeaderboardRow(
     val pr: PR,
     val weightKg: Double,
 )
+
+private fun bigThreeKey(exercise: String): String? {
+    val s = exercise.trim().lowercase()
+    if (s.contains("deadlift") || s.contains("dead lift")) return "deadlift"
+    if (s.contains("squat")) return "squat"
+    if (s.contains("bench")) return "bench"
+    return null
+}
 
 @Composable
 fun LeaderboardScreen(
@@ -31,14 +40,11 @@ fun LeaderboardScreen(
     useKg: Boolean,
     modifier: Modifier = Modifier
 ) {
+    // One best (heaviest) PR per exercise
     val rows = remember(prs) {
         prs
-            .groupBy { it.exercise.trim().lowercase() } // one group per lift name
+            .groupBy { it.exercise.trim() }
             .mapNotNull { (_, exercisePrs) ->
-                // Pick the single "best" PR for that exercise:
-                // 1) heaviest weight
-                // 2) most recent date
-                // 3) highest id
                 val best = exercisePrs.maxWithOrNull(
                     compareBy<PR> { it.weight }
                         .thenBy { parsePrDateOrMin(it.date) }
@@ -54,73 +60,126 @@ fun LeaderboardScreen(
             .take(25)
     }
 
+    // Best PR for each of Bench/Squat/Deadlift (missing lifts = 0)
+    val bigThreeBestKg = remember(prs) {
+        val best = mutableMapOf<String, PR>()
 
-    Column(
+        for (pr in prs) {
+            val key = bigThreeKey(pr.exercise) ?: continue
+            val current = best[key]
+
+            val better =
+                current == null ||
+                        pr.weight > current.weight ||
+                        (abs(pr.weight - current.weight) < 1e-9 &&
+                                parsePrDateOrMin(pr.date) > parsePrDateOrMin(current.date)) ||
+                        (abs(pr.weight - current.weight) < 1e-9 &&
+                                parsePrDateOrMin(pr.date) == parsePrDateOrMin(current.date) &&
+                                pr.id > current.id)
+
+            if (better) best[key] = pr
+        }
+
+        best
+    }
+
+    val benchKg = bigThreeBestKg["bench"]?.weight ?: 0.0
+    val squatKg = bigThreeBestKg["squat"]?.weight ?: 0.0
+    val deadliftKg = bigThreeBestKg["deadlift"]?.weight ?: 0.0
+    val clubTotalKg = benchKg + squatKg + deadliftKg
+
+    LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "All Time Stats",
-            style = MaterialTheme.typography.titleLarge
-        )
-        Text(
-            text = "Top lifts based on your heaviest recorded PRs.",
-            style = MaterialTheme.typography.bodySmall
-        )
-
-        Divider()
-
-        if (rows.isEmpty()) {
+        item {
+            Text("All Time Stats", style = MaterialTheme.typography.titleLarge)
             Text(
-                text = "No PRs yet. Add a PR to see the leaderboard.",
-                style = MaterialTheme.typography.bodyMedium
+                "Top lifts based on your heaviest recorded PRs.",
+                style = MaterialTheme.typography.bodySmall
             )
-            return@Column
+
+            Divider()
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Plain-text stats (no bubble)
+            Text(
+                text = "${formatWeight(clubTotalKg, useKg)} Club",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Bench", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    if (benchKg == 0.0) "—" else formatWeight(benchKg, useKg),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Squat", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    if (squatKg == 0.0) "—" else formatWeight(squatKg, useKg),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Deadlift", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    if (deadliftKg == 0.0) "—" else formatWeight(deadliftKg, useKg),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Divider()
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(rows, key = { it.pr.id }) { row ->
+        if (rows.isEmpty()) {
+            item {
+                Text(
+                    "No PRs yet. Add a PR to see the leaderboard.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            return@LazyColumn
+        }
 
-
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = row.pr.exercise,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                text = formatWeight(row.weightKg, useKg),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
+        // Individual lifts in Cards ✅
+        items(rows, key = { it.pr.id }) { row ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(row.pr.exercise, style = MaterialTheme.typography.titleMedium)
                         Text(
-                            text = "Reps: ${row.pr.reps}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Text(
-                            text = "Date: ${row.pr.date}",
-                            style = MaterialTheme.typography.bodySmall
+                            formatWeight(row.weightKg, useKg),
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text("Reps: ${row.pr.reps}", style = MaterialTheme.typography.bodySmall)
+                    Text("Date: ${row.pr.date}", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-
-
+        item { Spacer(modifier = Modifier.height(12.dp)) }
     }
 }
