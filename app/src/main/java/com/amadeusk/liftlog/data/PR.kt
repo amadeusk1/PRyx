@@ -5,5 +5,5 @@ data class PR(
     val exercise: String,
     val weight: Double,
     val reps: Int,
-    val date: String // you can later switch this to LocalDate
+    val date: String
 )

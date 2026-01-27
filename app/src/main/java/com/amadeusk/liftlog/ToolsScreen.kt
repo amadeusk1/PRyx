@@ -1,19 +1,26 @@
 package com.amadeusk.liftlog
 
+// Compose layouts + scrolling
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+
+// Keyboard options for numeric inputs
 import androidx.compose.foundation.text.KeyboardOptions
+
+// Material UI
 import androidx.compose.material3.*
+
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+
+// Math for Navy method logs
 import kotlin.math.log10
 
-
-// Sub-tabs within the Info screen
+// Sub-tabs within the Tools screen
 enum class InfoSubTab {
     TDEE,
     ONE_RM,
@@ -21,15 +28,16 @@ enum class InfoSubTab {
     BODY_FAT
 }
 
+// Main Tools screen with sub-tabs (TDEE / 1RM / Protein / Body Fat)
 @Composable
 fun ToolsScreen() {
+    // Which tool tab is selected
     var currentSubTab by remember { mutableStateOf(InfoSubTab.TDEE) }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Sub-tabs row
+        // Sub-tabs row across the top
         TabRow(
             selectedTabIndex = currentSubTab.ordinal,
             modifier = Modifier.fillMaxWidth()
@@ -56,6 +64,7 @@ fun ToolsScreen() {
             )
         }
 
+        // Show the selected calculator
         when (currentSubTab) {
             InfoSubTab.TDEE -> TdeeCalculator()
             InfoSubTab.ONE_RM -> OneRmCalculator()
@@ -65,17 +74,23 @@ fun ToolsScreen() {
     }
 }
 
+// TDEE calculator using Mifflin–St Jeor equation
 @Composable
 fun TdeeCalculator() {
     val scrollState = rememberScrollState()
 
+    // User input fields
     var weightText by remember { mutableStateOf("") } // kg
     var heightText by remember { mutableStateOf("") } // cm
     var ageText by remember { mutableStateOf("") }
 
+    // Sex selection
     var isMale by remember { mutableStateOf(true) }
-    var activityIndex by remember { mutableStateOf(1) } // 0..4
 
+    // Activity level selection index (0..4)
+    var activityIndex by remember { mutableStateOf(1) }
+
+    // Labels shown in the UI
     val activityLabels = listOf(
         "Sedentary (x1.2)",
         "Light (x1.375)",
@@ -83,12 +98,16 @@ fun TdeeCalculator() {
         "Heavy (x1.725)",
         "Athlete (x1.9)"
     )
+
+    // Multipliers used for TDEE calculation
     val activityMultipliers = listOf(1.2, 1.375, 1.55, 1.725, 1.9)
 
+    // Convert text inputs to numbers
     val weight = weightText.toDoubleOrNull()
     val height = heightText.toDoubleOrNull()
     val age = ageText.toIntOrNull()
 
+    // Calculate BMR if all inputs exist
     val bmr = if (weight != null && height != null && age != null) {
         if (isMale) {
             10 * weight + 6.25 * height - 5 * age + 5
@@ -97,6 +116,7 @@ fun TdeeCalculator() {
         }
     } else null
 
+    // Calculate TDEE using activity multiplier
     val tdee = bmr?.let { it * activityMultipliers[activityIndex] }
 
     Column(
@@ -116,6 +136,7 @@ fun TdeeCalculator() {
             style = MaterialTheme.typography.bodySmall
         )
 
+        // Weight input
         OutlinedTextField(
             value = weightText,
             onValueChange = { weightText = it },
@@ -124,6 +145,7 @@ fun TdeeCalculator() {
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Height input
         OutlinedTextField(
             value = heightText,
             onValueChange = { heightText = it },
@@ -132,6 +154,7 @@ fun TdeeCalculator() {
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Age input
         OutlinedTextField(
             value = ageText,
             onValueChange = { ageText = it },
@@ -140,6 +163,7 @@ fun TdeeCalculator() {
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Sex selection
         Text("Sex", style = MaterialTheme.typography.labelMedium)
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -161,15 +185,12 @@ fun TdeeCalculator() {
             }
         }
 
+        // Activity selection
         Text("Activity level", style = MaterialTheme.typography.labelMedium)
 
-        Column(
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             activityLabels.forEachIndexed { index, label ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
                         selected = activityIndex == index,
                         onClick = { activityIndex = index }
@@ -181,19 +202,18 @@ fun TdeeCalculator() {
 
         Divider(modifier = Modifier.padding(vertical = 8.dp))
 
+        // Show results if valid
         if (bmr != null && tdee != null) {
             Text("Estimated BMR: ${bmr.toInt()} kcal/day")
             Text("Estimated TDEE: ${tdee.toInt()} kcal/day")
 
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Rough guidelines:",
-                style = MaterialTheme.typography.labelMedium
-            )
+            Text(text = "Rough guidelines:", style = MaterialTheme.typography.labelMedium)
             Text("- Mild fat loss: TDEE - 250 to 400 kcal")
             Text("- Aggressive cut: TDEE - 500 to 700 kcal")
             Text("- Slow bulk: TDEE + 200 to 300 kcal")
         } else {
+            // Prompt user to fill fields
             Text(
                 text = "Fill in weight, height, and age to calculate your TDEE.",
                 style = MaterialTheme.typography.bodySmall
@@ -202,13 +222,16 @@ fun TdeeCalculator() {
     }
 }
 
+// 1RM calculator using Epley formula
 @Composable
 fun OneRmCalculator() {
     val scrollState = rememberScrollState()
 
+    // User input fields
     var weightText by remember { mutableStateOf("") }
     var repsText by remember { mutableStateOf("") }
 
+    // Convert text inputs to numbers
     val weight = weightText.toDoubleOrNull()
     val reps = repsText.toIntOrNull()
 
@@ -234,6 +257,7 @@ fun OneRmCalculator() {
             style = MaterialTheme.typography.bodySmall
         )
 
+        // Weight input
         OutlinedTextField(
             value = weightText,
             onValueChange = { weightText = it },
@@ -242,6 +266,7 @@ fun OneRmCalculator() {
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Reps input
         OutlinedTextField(
             value = repsText,
             onValueChange = { repsText = it },
@@ -252,6 +277,7 @@ fun OneRmCalculator() {
 
         Divider(modifier = Modifier.padding(vertical = 8.dp))
 
+        // Show results if valid
         if (oneRm != null) {
             Text("Estimated 1RM: ${String.format("%.1f", oneRm)}")
 
@@ -261,12 +287,12 @@ fun OneRmCalculator() {
                 text = "Suggested training percentages:",
                 style = MaterialTheme.typography.labelMedium
             )
+
+            // Show a few useful % ranges
             val percents = listOf(0.6, 0.7, 0.8, 0.9)
             percents.forEach { p ->
                 val w = oneRm * p
-                Text(
-                    text = "${(p * 100).toInt()}% ≈ ${String.format("%.1f", w)}"
-                )
+                Text(text = "${(p * 100).toInt()}% ≈ ${String.format("%.1f", w)}")
             }
         } else {
             Text(
@@ -277,29 +303,35 @@ fun OneRmCalculator() {
     }
 }
 
+// Protein calculator (returns a range in grams/day)
 @Composable
 fun ProteinNeedsCalculator() {
     val scrollState = rememberScrollState()
 
+    // User input + unit toggle (local to this calculator)
     var weightText by remember { mutableStateOf("") }
-    var useKg by remember { mutableStateOf(true) } // Unit inside this screen
+    var useKg by remember { mutableStateOf(true) }
 
-    // Goal: cut / maintain / bulk
+    // User goal selection
     var goal by remember { mutableStateOf("Recomp / Maintain") }
 
+    // Convert input to number
     val weight = weightText.toDoubleOrNull()
 
+    // Convert to kg if user entered lb
     val weightKg = if (weight != null) {
         if (useKg) weight else weight * 0.45359237
     } else null
 
+    // Protein range targets (g/kg) based on goal
     val (low, high) = when (goal) {
-        "Cut / Fat loss" -> 2.0 to 2.7   // g/kg
+        "Cut / Fat loss" -> 2.0 to 2.7
         "Recomp / Maintain" -> 1.6 to 2.2
         "Bulk / Gain" -> 1.6 to 2.0
         else -> 1.6 to 2.2
     }
 
+    // Compute grams/day range if weight is valid
     val gramsRange = weightKg?.let { kg ->
         val lowG = kg * low
         val highG = kg * high
@@ -313,16 +345,14 @@ fun ProteinNeedsCalculator() {
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "Protein Needs",
-            style = MaterialTheme.typography.titleMedium
-        )
+        Text(text = "Protein Needs", style = MaterialTheme.typography.titleMedium)
         Text(
             text = "General evidence-based ranges for lifters are around 1.6–2.2 g/kg of bodyweight per day, " +
                     "higher when cutting, slightly lower when bulking.",
             style = MaterialTheme.typography.bodySmall
         )
 
+        // Bodyweight input
         OutlinedTextField(
             value = weightText,
             onValueChange = { weightText = it },
@@ -331,29 +361,24 @@ fun ProteinNeedsCalculator() {
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Unit selection
         Text("Units", style = MaterialTheme.typography.labelMedium)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = useKg,
-                    onClick = { useKg = true }
-                )
+                RadioButton(selected = useKg, onClick = { useKg = true })
                 Text("kg")
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = !useKg,
-                    onClick = { useKg = false }
-                )
+                RadioButton(selected = !useKg, onClick = { useKg = false })
                 Text("lb")
             }
         }
 
+        // Goal selection
         Text("Goal", style = MaterialTheme.typography.labelMedium)
-
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             listOf("Cut / Fat loss", "Recomp / Maintain", "Bulk / Gain").forEach { g ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -368,29 +393,21 @@ fun ProteinNeedsCalculator() {
 
         Divider(modifier = Modifier.padding(vertical = 8.dp))
 
+        // Show results if valid
         if (gramsRange != null) {
             val (lowG, highG) = gramsRange
-            Text(
-                text = "Recommended daily protein:",
-                style = MaterialTheme.typography.labelMedium
-            )
+
+            Text(text = "Recommended daily protein:", style = MaterialTheme.typography.labelMedium)
             Text("${lowG.toInt()} – ${highG.toInt()} g per day")
 
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Example splits:",
-                style = MaterialTheme.typography.labelMedium
-            )
+            Text(text = "Example splits:", style = MaterialTheme.typography.labelMedium)
+
+            // Example meal splits
             val meals = 3
             val mealsHigh = 4
-            Text(
-                "- If you eat $meals meals: " +
-                        "${(lowG / meals).toInt()} – ${(highG / meals).toInt()} g per meal"
-            )
-            Text(
-                "- If you eat $mealsHigh meals: " +
-                        "${(lowG / mealsHigh).toInt()} – ${(highG / mealsHigh).toInt()} g per meal"
-            )
+            Text("- If you eat $meals meals: ${(lowG / meals).toInt()} – ${(highG / meals).toInt()} g per meal")
+            Text("- If you eat $mealsHigh meals: ${(lowG / mealsHigh).toInt()} – ${(highG / mealsHigh).toInt()} g per meal")
         } else {
             Text(
                 text = "Enter your bodyweight to get a recommended daily protein range.",
@@ -400,25 +417,25 @@ fun ProteinNeedsCalculator() {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Text(
-            text = "Notes:",
-            style = MaterialTheme.typography.labelMedium
-        )
+        // Extra notes
+        Text(text = "Notes:", style = MaterialTheme.typography.labelMedium)
         Text("- Aim for a good protein source in every meal (meat, eggs, dairy, whey, tofu, etc.).")
         Text("- More total calories > tiny differences in protein when bulking.")
         Text("- When cutting, higher protein helps keep muscle while losing fat.")
     }
 }
+
+// Body fat calculator with two methods: BMI estimate + Navy tape method
 @Composable
 fun BodyFatCalculator() {
     val scrollState = rememberScrollState()
 
-    // Unit selection
-    var useMetric by remember { mutableStateOf(true) }  // true = kg/cm, false = lb/in
+    // Unit selection (metric or imperial)
+    var useMetric by remember { mutableStateOf(true) }
     val heightUnit = if (useMetric) "cm" else "in"
     val weightUnit = if (useMetric) "kg" else "lb"
 
-    // Shared sex selection
+    // Sex selection
     var isMale by remember { mutableStateOf(true) }
 
     // BMI method inputs
@@ -432,46 +449,45 @@ fun BodyFatCalculator() {
     var waistText by remember { mutableStateOf("") }
     var hipText by remember { mutableStateOf("") }
 
-    // Convert text → Double?
+    // Convert string to Double? (helper)
     fun d(s: String) = s.toDoubleOrNull()
 
-    // -------------------------
-    // UNIT CONVERSION HELPERS
-    // -------------------------
+    // Unit conversions (imperial -> metric)
     fun toKg(v: Double) = if (useMetric) v else v * 0.45359237
     fun toCm(v: Double) = if (useMetric) v else v * 2.54
 
     // -------------------------
-    // BMI-BASED BODY FAT
+    // BMI METHOD CALC
     // -------------------------
     val bmiHeightCm = d(bmiHeightText)?.let { toCm(it) }
     val bmiWeightKg = d(bmiWeightText)?.let { toKg(it) }
     val age = ageText.toIntOrNull()
 
+    // BMI = kg / m^2
     val bmi = if (bmiHeightCm != null && bmiWeightKg != null && bmiHeightCm > 0) {
         val m = bmiHeightCm / 100.0
         bmiWeightKg / (m * m)
     } else null
 
+    // BMI body fat estimate formula
     val bmiBodyFat = if (bmi != null && age != null) {
         val sexFactor = if (isMale) 1.0 else 0.0
         1.20 * bmi + 0.23 * age - 10.8 * sexFactor - 5.4
     } else null
 
     // -------------------------
-    // NAVY METHOD BODY FAT
+    // NAVY METHOD CALC
     // -------------------------
     val navyHeight = d(heightText)?.let { toCm(it) }
     val neck = d(neckText)?.let { toCm(it) }
     val waist = d(waistText)?.let { toCm(it) }
     val hip = d(hipText)?.let { toCm(it) }
 
-    val hasMaleInputs =
-        isMale && navyHeight != null && neck != null && waist != null
+    // Check required inputs based on sex
+    val hasMaleInputs = isMale && navyHeight != null && neck != null && waist != null
+    val hasFemaleInputs = !isMale && navyHeight != null && neck != null && waist != null && hip != null
 
-    val hasFemaleInputs =
-        !isMale && navyHeight != null && neck != null && waist != null && hip != null
-
+    // Compute Navy method body fat % (different formula for male/female)
     val navyBodyFat: Double? = when {
         hasMaleInputs && (waist!! - neck!!) > 0 -> {
             val density =
@@ -492,6 +508,7 @@ fun BodyFatCalculator() {
         else -> null
     }
 
+    // Helpful error message if measurement math is invalid
     val invalidShape = when {
         hasMaleInputs && waist != null && neck != null && (waist - neck) <= 0 ->
             "Waist must be larger than neck for the Navy method."
@@ -511,10 +528,9 @@ fun BodyFatCalculator() {
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-
         Text("Body Fat Percentage", style = MaterialTheme.typography.titleMedium)
 
-        // UNIT TOGGLE
+        // Unit toggle
         Text("Units", style = MaterialTheme.typography.labelMedium)
         Row(verticalAlignment = Alignment.CenterVertically) {
             RadioButton(selected = useMetric, onClick = { useMetric = true })
@@ -524,7 +540,7 @@ fun BodyFatCalculator() {
             Text("Imperial (lb / in)")
         }
 
-        // SEX TOGGLE
+        // Sex toggle
         Text("Sex", style = MaterialTheme.typography.labelMedium)
         Row(verticalAlignment = Alignment.CenterVertically) {
             RadioButton(selected = isMale, onClick = { isMale = true })
@@ -535,7 +551,7 @@ fun BodyFatCalculator() {
         }
 
         // -------------------------
-        // BMI METHOD UI
+        // BMI UI
         // -------------------------
         Divider()
         Text("Quick Estimate (BMI Method)", style = MaterialTheme.typography.labelLarge)
@@ -568,8 +584,10 @@ fun BodyFatCalculator() {
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Show BMI number if available
         bmi?.let { Text("BMI: ${String.format("%.1f", it)}") }
 
+        // Show BMI bodyfat if available
         bmiBodyFat?.let {
             if (!it.isNaN() && !it.isInfinite()) {
                 Text("Estimated BF% (BMI): ${String.format("%.1f", it)}%")
@@ -580,7 +598,7 @@ fun BodyFatCalculator() {
         )
 
         // -------------------------
-        // NAVY METHOD UI
+        // NAVY UI
         // -------------------------
         Divider()
         Text("US Navy Tape-Measure Method", style = MaterialTheme.typography.labelLarge)
@@ -610,6 +628,7 @@ fun BodyFatCalculator() {
             modifier = Modifier.fillMaxWidth()
         )
 
+        // Hip is only required for female Navy method
         if (!isMale) {
             OutlinedTextField(
                 value = hipText,
@@ -620,6 +639,7 @@ fun BodyFatCalculator() {
             )
         }
 
+        // Show Navy body fat estimate if valid
         if (navyBodyFat != null && !navyBodyFat.isNaN() && !navyBodyFat.isInfinite()) {
             Text(
                 "Estimated BF% (Navy): ${String.format("%.1f", navyBodyFat)}%",
@@ -632,6 +652,7 @@ fun BodyFatCalculator() {
             )
         }
 
+        // Show shape/measurement error if present
         invalidShape?.let {
             Text(it, color = MaterialTheme.colorScheme.error)
         }
