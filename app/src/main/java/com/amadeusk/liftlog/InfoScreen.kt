@@ -1,29 +1,39 @@
 package com.amadeusk.liftlog
 
+// Android intent + URI handling
 import android.content.Intent
 import android.net.Uri
+
+// Compose layout + interaction
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+
+// Material UI components
 import androidx.compose.material3.*
+
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-
+// Main info / resources screen
 @Composable
 fun InfoScreen() {
+    // Access Android context (used for opening links / email)
     val context = LocalContext.current
+
+    // Scroll state for vertical scrolling
     val scroll = rememberScrollState()
 
+    // Root column for the entire screen
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scroll)
-            .padding(16.dp),
+            .fillMaxSize()                 // Fill full screen
+            .verticalScroll(scroll)        // Enable scrolling
+            .padding(16.dp),               // Screen padding
         verticalArrangement = Arrangement.spacedBy(22.dp)
     ) {
 
@@ -36,20 +46,22 @@ fun InfoScreen() {
             fontWeight = FontWeight.Bold
         )
 
-        // NEW NOTE BELOW TITLE
+        // Clickable email note under the title
         Text(
             text = "Have something to add? Email: contact@amadeusk.dev",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.clickable {
+                // Open email app with pre-filled address
                 val intent = Intent(Intent.ACTION_SENDTO).apply {
                     data = Uri.parse("mailto:contact@amadeusk.dev")
                 }
                 context.startActivity(intent)
             }
         )
+
         // -------------------------
-        // EXTERNAL RESOURCES — FITNESS
+        // FITNESS RESOURCES
         // -------------------------
         SectionTitle("Recommended Fitness Resources")
 
@@ -76,8 +88,9 @@ fun InfoScreen() {
             url = "https://renaissanceperiodization.com",
             context = context
         )
+
         // -------------------------
-        // STEROID RESOURCES SECTION
+        // COMPOUNDS / STEROIDS
         // -------------------------
         SectionTitle("Steriods + Other Compounds Resources")
 
@@ -86,6 +99,7 @@ fun InfoScreen() {
             url = "https://thinksteroids.com/contributors/",
             context = context
         )
+
         ResourceCard(
             title = "ThinkSteroids — Community Forum",
             url = "https://thinksteroids.com/community/",
@@ -98,14 +112,13 @@ fun InfoScreen() {
             context = context
         )
 
-
         // -------------------------
         // DISCLAIMER
         // -------------------------
         SectionTitle("Disclaimer")
         Text(
-            "These resources are provided for educational, training, and harm-reduction purposes only. "
-                    + "Nothing here replaces medical advice.",
+            "These resources are provided for educational, training, and harm-reduction purposes only. " +
+                    "Nothing here replaces medical advice.",
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -133,7 +146,6 @@ fun InfoScreen() {
         InfoBullet("Creatine monohydrate 3–5g daily is safe & effective.")
         InfoBullet("Hydration affects performance more than people think.")
 
-
         // -------------------------
         // RECOVERY & SLEEP
         // -------------------------
@@ -144,7 +156,6 @@ fun InfoScreen() {
         InfoBullet("Walking helps recovery more than stretching does.")
         InfoBullet("Deload every 4–8 weeks if you're feeling beat down.")
 
-
         // -------------------------
         // INJURY PREVENTION
         // -------------------------
@@ -154,7 +165,6 @@ fun InfoScreen() {
         InfoBullet("Increase load slowly week to week.")
         InfoBullet("Train through a full range of motion where possible.")
         InfoBullet("Pain ≠ normal; learn the difference between fatigue and injury.")
-
 
         // -------------------------
         // HYPERTROPHY GUIDELINES
@@ -176,9 +186,8 @@ fun InfoScreen() {
         InfoBullet("Add weight or reps gradually — micro plates help.")
         InfoBullet("Rest 2–5 minutes between heavy sets.")
 
-
         // -------------------------
-        // USEFUL IN-APP TOOLS
+        // IN-APP TOOLS
         // -------------------------
         SectionTitle("Tools in This App")
 
@@ -187,20 +196,14 @@ fun InfoScreen() {
         InfoBullet("TDEE Calculator")
         InfoBullet("Protein Intake Calculator")
         InfoBullet("Body Fat Estimation Calculator (BMI & Tape Method)")
-
-
-
-
-
-
     }
 }
 
-
 // ---------------------------------------------------------
-// COMPONENTS
+// REUSABLE COMPONENTS
 // ---------------------------------------------------------
 
+// Section header text
 @Composable
 fun SectionTitle(text: String) {
     Text(
@@ -210,17 +213,20 @@ fun SectionTitle(text: String) {
     )
 }
 
+// Bullet-point text
 @Composable
 fun InfoBullet(text: String) {
     Text("• $text", style = MaterialTheme.typography.bodyMedium)
 }
 
+// Clickable card that opens an external URL
 @Composable
 fun ResourceCard(title: String, url: String, context: android.content.Context) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
+                // Open the link in a browser
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                 context.startActivity(intent)
             },

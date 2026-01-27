@@ -1,73 +1,103 @@
 package com.amadeusk.liftlog
 
+// Compose runtime
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+
+// UI utilities
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxWidth
+
+// Data models
 import com.amadeusk.liftlog.data.BodyWeightEntry
 import com.amadeusk.liftlog.data.PR
+
+// Math helpers
 import kotlin.math.roundToInt
 
+// Graph for exercise PR progression
 @Composable
 fun ExerciseGraph(
-    prs: List<PR>,
-    selectedPr: PR?,
-    onPointSelected: (PR) -> Unit,
-    useKg: Boolean,
+    prs: List<PR>,                     // List of PR data points
+    selectedPr: PR?,                   // Currently selected PR (highlighted point)
+    onPointSelected: (PR) -> Unit,     // Callback when a point is tapped
+    useKg: Boolean,                    // Whether to display values in kg
     modifier: Modifier = Modifier
 ) {
+    // Sort PRs by date, then by ID for stable ordering
     val sorted = remember(prs) {
-        prs.sortedWith(compareBy<PR> { parsePrDateOrMin(it.date) }.thenBy { it.id })
+        prs.sortedWith(
+            compareBy<PR> { parsePrDateOrMin(it.date) }
+                .thenBy { it.id }
+        )
     }
 
+    // Render the line chart
     ProfessionalLineChart(
         title = "PR Progress",
         items = sorted,
         selected = selectedPr,
         onSelected = onPointSelected,
-        // convert ONCE for chart scaling
+
+        // Convert weight once for chart scaling
         getValue = { it.weight.toDisplayWeight(useKg) },
+
+        // Format x-axis labels as MM/DD
         getLabel = { shortDateLabel(it.date) },
-        // v is already in display units — DO NOT convert again
+
+        // Format value label (already converted)
         formatValue = { v ->
             "${v.roundToInt()} ${if (useKg) "kg" else "lb"}"
         },
+
         modifier = modifier.fillMaxWidth()
     )
 }
 
+// Graph for bodyweight progression over time
 @Composable
 fun BodyWeightGraph(
-    entries: List<BodyWeightEntry>,
-    selectedEntry: BodyWeightEntry?,
-    onPointSelected: (BodyWeightEntry) -> Unit,
-    useKg: Boolean,
+    entries: List<BodyWeightEntry>,            // List of bodyweight entries
+    selectedEntry: BodyWeightEntry?,           // Currently selected entry
+    onPointSelected: (BodyWeightEntry) -> Unit,// Callback when a point is tapped
+    useKg: Boolean,                            // Whether to display values in kg
     modifier: Modifier = Modifier
 ) {
+    // Sort entries by date, then by ID for consistency
     val sorted = remember(entries) {
-        entries.sortedWith(compareBy<BodyWeightEntry> { parsePrDateOrMin(it.date) }.thenBy { it.id })
+        entries.sortedWith(
+            compareBy<BodyWeightEntry> { parsePrDateOrMin(it.date) }
+                .thenBy { it.id }
+        )
     }
 
+    // Render the line chart
     ProfessionalLineChart(
         title = "Bodyweight Progress",
         items = sorted,
         selected = selectedEntry,
         onSelected = onPointSelected,
-        // convert ONCE for chart scaling
+
+        // Convert weight once for chart scaling
         getValue = { it.weight.toDisplayWeight(useKg) },
+
+        // Format x-axis labels as MM/DD
         getLabel = { shortDateLabel(it.date) },
-        // v is already in display units — DO NOT convert again
+
+        // Format value label (already converted)
         formatValue = { v ->
             "${v.roundToInt()} ${if (useKg) "kg" else "lb"}"
         },
+
         modifier = modifier.fillMaxWidth()
     )
 }
 
+// Converts YYYY-MM-DD into MM/DD for graph labels
 private fun shortDateLabel(date: String): String {
     return if (date.length >= 10 && date[4] == '-' && date[7] == '-') {
         val mm = date.substring(5, 7)
         val dd = date.substring(8, 10)
         "$mm/$dd"
-    } else date
+    } else date // Fallback if format is unexpected
 }
