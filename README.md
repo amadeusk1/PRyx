@@ -1,7 +1,7 @@
-# PRyx
-
+# PRyx 
 PRyx is a simple, offline personal record (PR) and bodyweight tracking application for Android.  
 Built with Kotlin and Jetpack Compose, it focuses on clarity, speed, and minimal interaction—so you can log your progress without friction.
+https://play.google.com/store/apps/details?id=com.amadeusk.liftlog
 
 ---
 
