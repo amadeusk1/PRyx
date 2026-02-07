@@ -12,8 +12,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import com.amadeusk.liftlog.data.BodyWeightEntry
 import com.amadeusk.liftlog.data.PR
 
-// Math helpers
-import kotlin.math.roundToInt
+// ---- Formatting helpers ----
+
+// Format an already-converted (display-unit) weight value for graph labels.
+// We keep one decimal so lb mode stays accurate (kg->lb conversion commonly yields decimals).
+private fun formatGraphWeight(value: Double, useKg: Boolean): String {
+    val unit = if (useKg) "kg" else "lb"
+    return "${"%.1f".format(value)} $unit"
+}
 
 // Graph for exercise PR progression
 @Composable
@@ -46,9 +52,7 @@ fun ExerciseGraph(
         getLabel = { shortDateLabel(it.date) },
 
         // Format value label (already converted)
-        formatValue = { v ->
-            "${v.roundToInt()} ${if (useKg) "kg" else "lb"}"
-        },
+        formatValue = { v -> formatGraphWeight(v, useKg) },
 
         modifier = modifier.fillMaxWidth()
     )
@@ -85,9 +89,7 @@ fun BodyWeightGraph(
         getLabel = { shortDateLabel(it.date) },
 
         // Format value label (already converted)
-        formatValue = { v ->
-            "${v.roundToInt()} ${if (useKg) "kg" else "lb"}"
-        },
+        formatValue = { v -> formatGraphWeight(v, useKg) },
 
         modifier = modifier.fillMaxWidth()
     )
