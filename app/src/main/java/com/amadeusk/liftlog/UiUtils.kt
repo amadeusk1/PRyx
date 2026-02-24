@@ -57,7 +57,7 @@ private val DAILY_QUOTES: List<DailyQuote> = listOf(
         author = "Ronnie Coleman"
     ),
     DailyQuote(
-        text = "Everybody wants to be a bodybuilder, but nobody wants to lift no heavy-ass weights.",
+        text = "Everybody wants to be a bodybuilder, but nobody wants to lift no heavy-*** weights.",
         author = "Ronnie Coleman"
     ),
     DailyQuote(
