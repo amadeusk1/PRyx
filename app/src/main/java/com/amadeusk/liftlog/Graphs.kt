@@ -30,7 +30,8 @@ fun ExerciseGraph(
     useKg: Boolean,                    // Whether to display values in kg
     modifier: Modifier = Modifier,
     showAxisLabels: Boolean = true,
-    showTitle: Boolean = true
+    showTitle: Boolean = true,
+    showGrid: Boolean = true
 ) {
     // Sort PRs by date, then by ID for stable ordering
     val sorted = remember(prs) {
@@ -58,7 +59,8 @@ fun ExerciseGraph(
 
         modifier = modifier.fillMaxWidth(),
         showAxisLabels = showAxisLabels,
-        showTitle = showTitle
+        showTitle = showTitle,
+        showGrid = showGrid
     )
 }
 
@@ -71,7 +73,8 @@ fun BodyWeightGraph(
     useKg: Boolean,                            // Whether to display values in kg
     modifier: Modifier = Modifier,
     showAxisLabels: Boolean = true,
-    showTitle: Boolean = true
+    showTitle: Boolean = true,
+    showGrid: Boolean = true
 ) {
     // Sort entries by date, then by ID for consistency
     val sorted = remember(entries) {
@@ -99,7 +102,8 @@ fun BodyWeightGraph(
 
         modifier = modifier.fillMaxWidth(),
         showAxisLabels = showAxisLabels,
-        showTitle = showTitle
+        showTitle = showTitle,
+        showGrid = showGrid
     )
 }
 

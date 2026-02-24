@@ -2,6 +2,7 @@ package com.amadeusk.liftlog
 
 // Compose layouts + lists
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -30,12 +31,34 @@ import com.amadeusk.liftlog.data.PR
 import com.amadeusk.liftlog.data.loadBodyWeightsFromFile
 import com.amadeusk.liftlog.data.saveBodyWeightsToFile
 
+// App theme
+import com.amadeusk.liftlog.ui.theme.LiftLogTheme
+
 // Top-level pages (separate from the tab row)
 private enum class TopPage { DASHBOARD, TRAINING, INFO, ANNOUNCEMENTS, LEADERBOARD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LiftLogRoot(viewModel: PRViewModel) {
+    val systemDark = isSystemInDarkTheme()
+    var useDarkTheme by remember(systemDark) { mutableStateOf(systemDark) }
+
+    LiftLogTheme(darkTheme = useDarkTheme) {
+        LiftLogRootContent(
+            viewModel = viewModel,
+            useDarkTheme = useDarkTheme,
+            onDarkThemeChange = { useDarkTheme = it }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LiftLogRootContent(
+    viewModel: PRViewModel,
+    useDarkTheme: Boolean,
+    onDarkThemeChange: (Boolean) -> Unit
+) {
     // Android context (used for file I/O + dialogs)
     val context = LocalContext.current
 
@@ -500,6 +523,15 @@ fun LiftLogRoot(viewModel: PRViewModel) {
                         RadioButton(selected = !useKg, onClick = { useKg = false })
                         Text("Pounds (lb)")
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Appearance", style = MaterialTheme.typography.labelMedium)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Dark mode", modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = useDarkTheme,
+                            onCheckedChange = { onDarkThemeChange(it) }
+                        )
+                    }
                 }
             }
         )
@@ -640,60 +672,89 @@ private fun DashboardScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // -------- LIFTS SECTION --------
         Text(
-            text = "Overview",
+            text = "Lifts",
             style = MaterialTheme.typography.titleMedium
         )
 
-        // Core lift previews (up to 5 most recent entries so we always have data when it exists)
-        coreLifts.forEach { lift ->
-            val liftPrs = remember(prs, lift) {
-                prs
-                    .filter { it.exercise == lift }
-                    .sortedByDescending { parsePrDateOrMin(it.date) }
-                    .take(5)
-                    .sortedBy { parsePrDateOrMin(it.date) }
-            }
-
-            Card(
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onOpenExercise(lift) }
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = lift,
-                        style = MaterialTheme.typography.titleSmall
-                    )
-                    if (liftPrs.isNotEmpty()) {
-                        ExerciseGraph(
-                            prs = liftPrs,
-                            selectedPr = null,
-                            onPointSelected = {},
-                            useKg = useKg,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(160.dp)
-                                .padding(top = 4.dp),
-                            showAxisLabels = false,
-                            showTitle = false
-                        )
-                    } else {
-                        Text(
-                            text = "No PRs logged yet. Tap to add and view more.",
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                coreLifts.forEachIndexed { index, lift ->
+                    val liftPrs = remember(prs, lift) {
+                        prs
+                            .filter { it.exercise == lift }
+                            .sortedByDescending { parsePrDateOrMin(it.date) }
+                            .take(5)
+                            .sortedBy { parsePrDateOrMin(it.date) }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenExercise(lift) }
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = lift,
+                                style = MaterialTheme.typography.titleSmall
+                            )
+
+                            val latest = liftPrs.lastOrNull()
+                            if (latest != null) {
+                                Text(
+                                    text = formatWeight(latest.weight, useKg),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        }
+
+                        if (liftPrs.isNotEmpty()) {
+                            ExerciseGraph(
+                                prs = liftPrs,
+                                selectedPr = null,
+                                onPointSelected = {},
+                                useKg = useKg,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp)
+                                    .padding(top = 6.dp),
+                                showAxisLabels = false,
+                                showTitle = false,
+                                showGrid = false
+                            )
+                        } else {
+                            Text(
+                                text = "No PRs logged yet. Tap to add and view more.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+
+                    if (index != coreLifts.lastIndex) {
+                        Divider(modifier = Modifier.padding(vertical = 6.dp))
                     }
                 }
             }
         }
 
-        // Bodyweight preview
+        // -------- BODYWEIGHT SECTION --------
+        Text(
+            text = "Bodyweight",
+            style = MaterialTheme.typography.titleMedium
+        )
+
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -705,16 +766,30 @@ private fun DashboardScreen(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "Bodyweight",
-                    style = MaterialTheme.typography.titleSmall
-                )
-
                 val bwPreview = remember(bodyWeights) {
                     bodyWeights
                         .sortedByDescending { parsePrDateOrMin(it.date) }
                         .take(5)
                         .sortedBy { parsePrDateOrMin(it.date) }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Trend",
+                        style = MaterialTheme.typography.titleSmall
+                    )
+
+                    val latest = bwPreview.lastOrNull()
+                    if (latest != null) {
+                        Text(
+                            text = formatWeight(latest.weight, useKg),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
                 }
 
                 if (bwPreview.isNotEmpty()) {
@@ -726,9 +801,10 @@ private fun DashboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(160.dp)
-                            .padding(top = 4.dp),
+                            .padding(top = 6.dp),
                         showAxisLabels = false,
-                        showTitle = false
+                        showTitle = false,
+                        showGrid = false
                     )
                 } else {
                     Text(

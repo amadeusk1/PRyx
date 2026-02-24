@@ -60,7 +60,8 @@ fun <T> ProfessionalLineChart(
     formatValue: (Double) -> String, // Format values for labels / tooltip
     modifier: Modifier = Modifier,
     showAxisLabels: Boolean = true,
-    showTitle: Boolean = true
+    showTitle: Boolean = true,
+    showGrid: Boolean = true
 ) {
     // Need at least 2 points to draw a line
     if (items.size < 2) {
@@ -88,9 +89,10 @@ fun <T> ProfessionalLineChart(
 
     // Layout constants
     val chartHeight = 220.dp
-    val leftGutter = 68.dp     // space for Y-axis labels
-    val bottomGutter = 46.dp   // space for X-axis labels
-    val topGutter = 14.dp
+    // Use larger gutters when showing axes, smaller and more symmetric for compact previews
+    val leftGutter = if (showAxisLabels) 68.dp else 16.dp     // space for Y-axis labels
+    val bottomGutter = if (showAxisLabels) 46.dp else 16.dp   // space for X-axis labels
+    val topGutter = if (showAxisLabels) 14.dp else 12.dp
     val rightGutter = 16.dp
 
     // Density used to convert dp -> px for hit-testing
@@ -113,7 +115,7 @@ fun <T> ProfessionalLineChart(
             shape = MaterialTheme.shapes.large,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(chartHeight)
+                .heightIn(min = chartHeight)
         ) {
             Box(
                 modifier = Modifier
@@ -215,51 +217,53 @@ fun <T> ProfessionalLineChart(
                     )
 
                     // --- GRIDLINES + Y LABELS ---
-                    val gridLines = 5
-                    for (g in 0..gridLines) {
-                        val frac = g / gridLines.toFloat()
-                        val y = plotTop + frac * plotH
+                    if (showGrid) {
+                        val gridLines = 5
+                        for (g in 0..gridLines) {
+                            val frac = g / gridLines.toFloat()
+                            val y = plotTop + frac * plotH
 
-                        // Horizontal line
-                        drawLine(
-                            color = gridColor,
-                            start = Offset(plotLeft, y),
-                            end = Offset(plotRight, y),
-                            strokeWidth = 1.5f
-                        )
+                            // Horizontal line
+                            drawLine(
+                                color = gridColor,
+                                start = Offset(plotLeft, y),
+                                end = Offset(plotRight, y),
+                                strokeWidth = 1.5f
+                            )
 
-                        if (showAxisLabels) {
-                            // Value label on the left
-                            val v = paddedMax - (paddedRange * frac)
-                            drawContext.canvas.nativeCanvas.apply {
-                                val paint = android.graphics.Paint().apply {
-                                    isAntiAlias = true
-                                    textSize = 28f
-                                    color = axisTextColor.toArgb()
-                                    textAlign = android.graphics.Paint.Align.RIGHT
+                            if (showAxisLabels) {
+                                // Value label on the left
+                                val v = paddedMax - (paddedRange * frac)
+                                drawContext.canvas.nativeCanvas.apply {
+                                    val paint = android.graphics.Paint().apply {
+                                        isAntiAlias = true
+                                        textSize = 28f
+                                        color = axisTextColor.toArgb()
+                                        textAlign = android.graphics.Paint.Align.RIGHT
+                                    }
+                                    drawText(
+                                        formatValue(v),
+                                        plotLeft - 22f, // padding from plot area
+                                        y + 10f,
+                                        paint
+                                    )
                                 }
-                                drawText(
-                                    formatValue(v),
-                                    plotLeft - 22f, // padding from plot area
-                                    y + 10f,
-                                    paint
-                                )
                             }
                         }
-                    }
 
-                    // --- VERTICAL GRIDLINES ---
-                    val vLines = 4
-                    for (g in 0..vLines) {
-                        val frac = g / vLines.toFloat()
-                        val x = plotLeft + frac * plotW
+                        // --- VERTICAL GRIDLINES ---
+                        val vLines = 4
+                        for (g in 0..vLines) {
+                            val frac = g / vLines.toFloat()
+                            val x = plotLeft + frac * plotW
 
-                        drawLine(
-                            color = gridColor,
-                            start = Offset(x, plotTop),
-                            end = Offset(x, plotBottom),
-                            strokeWidth = 1.5f
-                        )
+                            drawLine(
+                                color = gridColor,
+                                start = Offset(x, plotTop),
+                                end = Offset(x, plotBottom),
+                                strokeWidth = 1.5f
+                            )
+                        }
                     }
 
                     // --- X LABELS ---
