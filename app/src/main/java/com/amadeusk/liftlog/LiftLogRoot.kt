@@ -11,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 
 // Icons
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
@@ -39,7 +38,7 @@ import com.amadeusk.liftlog.data.saveDarkTheme
 import com.amadeusk.liftlog.ui.theme.LiftLogTheme
 
 // Top-level pages (separate from the tab row)
-private enum class TopPage { DASHBOARD, TRAINING, INFO, ANNOUNCEMENTS, LEADERBOARD }
+private enum class TopPage { DASHBOARD, TRAINING, INFO, LEADERBOARD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -144,25 +143,18 @@ private fun LiftLogRootContent(
                             Text(if (topPage == TopPage.INFO) "Back" else "Info")
                         }
 
-                        // Announcements button (hidden when already on announcements page)
-                        if (topPage != TopPage.ANNOUNCEMENTS) {
-                            IconButton(onClick = { topPage = TopPage.ANNOUNCEMENTS }) {
-                                Icon(Icons.Filled.Notifications, contentDescription = "Announcements")
-                            }
+                        // Home button (go back to dashboard)
+                        IconButton(
+                            onClick = { topPage = TopPage.DASHBOARD },
+                            enabled = topPage != TopPage.DASHBOARD
+                        ) {
+                            Icon(Icons.Filled.Home, contentDescription = "Home")
                         }
                     }
                 },
 
-                // Right side: Home + Leaderboard + Settings
+                // Right side: Leaderboard + Settings
                 actions = {
-                    // Quick return to dashboard
-                    IconButton(
-                        onClick = { topPage = TopPage.DASHBOARD },
-                        enabled = topPage != TopPage.DASHBOARD
-                    ) {
-                        Icon(Icons.Filled.Home, contentDescription = "Home")
-                    }
-
                     // Open leaderboard page (disable button if already there)
                     IconButton(
                         onClick = { topPage = TopPage.LEADERBOARD },
@@ -231,17 +223,12 @@ private fun LiftLogRootContent(
                             topPage = TopPage.TRAINING
                         },
                         onOpenLeaderboard = { topPage = TopPage.LEADERBOARD },
-                        onOpenAnnouncements = { topPage = TopPage.ANNOUNCEMENTS },
                         onOpenInfo = { topPage = TopPage.INFO }
                     )
                     return@Column
                 }
                 TopPage.INFO -> {
                     InfoScreen()
-                    return@Column
-                }
-                TopPage.ANNOUNCEMENTS -> {
-                    AnnouncementsScreen(modifier = Modifier.fillMaxSize())
                     return@Column
                 }
                 TopPage.LEADERBOARD -> {
@@ -699,7 +686,6 @@ private fun DashboardScreen(
     onOpenBodyweight: () -> Unit,
     onOpenTools: () -> Unit,
     onOpenLeaderboard: () -> Unit,
-    onOpenAnnouncements: () -> Unit,
     onOpenInfo: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -899,46 +885,22 @@ private fun DashboardScreen(
             }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenInfo() }
         ) {
-            Card(
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .clickable { onOpenAnnouncements() }
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text("Announcements", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        text = "Latest updates and notes.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-
-            Card(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onOpenInfo() }
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text("App Info", style = MaterialTheme.typography.titleSmall)
-                    Text(
-                        text = "Tips, how PRyx works, and more.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
+                Text("App Info", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = "Tips, how PRyx works, and more.",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }
