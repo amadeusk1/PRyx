@@ -23,6 +23,20 @@ enum class GraphRange {
     ALL
 }
 
+// ---- Rep filter for PR graph/history ----
+enum class RepRange(val reps: Int?) {
+    ONE(1),
+    THREE(3),
+    SIX(6),
+    EIGHT(8),
+    ALL(null)
+}
+
+fun filterPrsByRepRange(prs: List<PR>, repRange: RepRange): List<PR> {
+    val r = repRange.reps ?: return prs
+    return prs.filter { it.reps == r }
+}
+
 // Shared date formatter (expects yyyy-MM-dd)
 val prDateFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 

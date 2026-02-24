@@ -30,6 +30,10 @@ import com.amadeusk.liftlog.data.BodyWeightEntry
 import com.amadeusk.liftlog.data.PR
 import com.amadeusk.liftlog.data.loadBodyWeightsFromFile
 import com.amadeusk.liftlog.data.saveBodyWeightsToFile
+import com.amadeusk.liftlog.data.loadUseKg
+import com.amadeusk.liftlog.data.saveUseKg
+import com.amadeusk.liftlog.data.loadDarkTheme
+import com.amadeusk.liftlog.data.saveDarkTheme
 
 // App theme
 import com.amadeusk.liftlog.ui.theme.LiftLogTheme
@@ -40,14 +44,20 @@ private enum class TopPage { DASHBOARD, TRAINING, INFO, ANNOUNCEMENTS, LEADERBOA
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LiftLogRoot(viewModel: PRViewModel) {
+    val context = LocalContext.current
     val systemDark = isSystemInDarkTheme()
-    var useDarkTheme by remember(systemDark) { mutableStateOf(systemDark) }
+    var useDarkTheme by remember(context, systemDark) {
+        mutableStateOf(loadDarkTheme(context, systemDark))
+    }
 
     LiftLogTheme(darkTheme = useDarkTheme) {
         LiftLogRootContent(
             viewModel = viewModel,
             useDarkTheme = useDarkTheme,
-            onDarkThemeChange = { useDarkTheme = it }
+            onDarkThemeChange = { enabled ->
+                useDarkTheme = enabled
+                saveDarkTheme(context, enabled)
+            }
         )
     }
 }
@@ -90,6 +100,9 @@ private fun LiftLogRootContent(
     // Shared range selector for both graphs (month/year/all)
     var selectedRange by remember { mutableStateOf(GraphRange.MONTH) }
 
+    // Rep filter selector for PRs (1/3/6/8/all)
+    var selectedRepRange by remember { mutableStateOf(RepRange.ALL) }
+
     // Bodyweight entries (loaded from file, stored locally in this screen)
     var bodyWeights by remember { mutableStateOf(loadBodyWeightsFromFile(context)) }
 
@@ -101,7 +114,7 @@ private fun LiftLogRootContent(
     var selectedBwEntry by remember { mutableStateOf<BodyWeightEntry?>(null) }
 
     // Unit toggle (true = kg, false = lb)
-    var useKg by remember { mutableStateOf(true) }
+    var useKg by remember(context) { mutableStateOf(loadUseKg(context, default = true)) }
 
     // Settings dialog flag
     var showSettingsDialog by remember { mutableStateOf(false) }
@@ -203,6 +216,7 @@ private fun LiftLogRootContent(
                             selectedExercise = exercise
                             selectedGraphPr = null
                             selectedRange = GraphRange.MONTH
+                            selectedRepRange = RepRange.ALL
                             currentTab = LiftLogTab.PRS
                             topPage = TopPage.TRAINING
                         },
@@ -283,6 +297,14 @@ private fun LiftLogRootContent(
                             }
                         )
 
+                        RepRangeSelector(
+                            selectedRange = selectedRepRange,
+                            onRangeSelected = { rr ->
+                                selectedRepRange = rr
+                                selectedGraphPr = null // clear selected point
+                            }
+                        )
+
                         // Range selector (month/year/all)
                         GraphRangeSelector(
                             selectedRange = selectedRange,
@@ -296,7 +318,10 @@ private fun LiftLogRootContent(
 
                         // Filter PRs to selected exercise + selected range
                         val prsForSelected = filterPrsByRange(
-                            uiState.prs.filter { it.exercise == selectedExercise },
+                            filterPrsByRepRange(
+                                uiState.prs.filter { it.exercise == selectedExercise },
+                                selectedRepRange
+                            ),
                             selectedRange
                         ).sortedBy { parsePrDateOrMin(it.date) }
 
@@ -355,7 +380,10 @@ private fun LiftLogRootContent(
                         // PR history list for selected exercise + selected range
                         val history = if (selectedExercise != null) {
                             filterPrsByRange(
-                                uiState.prs.filter { it.exercise == selectedExercise },
+                                filterPrsByRepRange(
+                                    uiState.prs.filter { it.exercise == selectedExercise },
+                                    selectedRepRange
+                                ),
                                 selectedRange
                             ).sortedByDescending { parsePrDateOrMin(it.date) }
                         } else emptyList()
@@ -516,11 +544,23 @@ private fun LiftLogRootContent(
             text = {
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = useKg, onClick = { useKg = true })
+                        RadioButton(
+                            selected = useKg,
+                            onClick = {
+                                useKg = true
+                                saveUseKg(context, true)
+                            }
+                        )
                         Text("Kilograms (kg)")
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = !useKg, onClick = { useKg = false })
+                        RadioButton(
+                            selected = !useKg,
+                            onClick = {
+                                useKg = false
+                                saveUseKg(context, false)
+                            }
+                        )
                         Text("Pounds (lb)")
                     }
                     Spacer(modifier = Modifier.height(8.dp))

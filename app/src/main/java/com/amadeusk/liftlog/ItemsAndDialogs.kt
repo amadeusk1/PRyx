@@ -93,6 +93,54 @@ fun GraphRangeSelector(
     }
 }
 
+// Buttons for selecting rep filter (1/3/6/8/all)
+@Composable
+fun RepRangeSelector(
+    selectedRange: RepRange,
+    onRangeSelected: (RepRange) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        RepRangeButton("1 rep", RepRange.ONE, selectedRange, onRangeSelected)
+        RepRangeButton("3 rep", RepRange.THREE, selectedRange, onRangeSelected)
+        RepRangeButton("6 rep", RepRange.SIX, selectedRange, onRangeSelected)
+        RepRangeButton("8 rep", RepRange.EIGHT, selectedRange, onRangeSelected)
+        RepRangeButton("All", RepRange.ALL, selectedRange, onRangeSelected)
+    }
+}
+
+@Composable
+private fun RepRangeButton(
+    label: String,
+    range: RepRange,
+    selectedRange: RepRange,
+    onRangeSelected: (RepRange) -> Unit
+) {
+    val selected = selectedRange == range
+
+    OutlinedButton(
+        onClick = { onRangeSelected(range) },
+        colors = if (selected) {
+            ButtonDefaults.outlinedButtonColors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+            )
+        } else {
+            ButtonDefaults.outlinedButtonColors()
+        },
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+    ) {
+        Text(
+            text = label,
+            color = if (selected) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+            style = MaterialTheme.typography.labelLarge
+        )
+    }
+}
+
 // Single range button with a "selected" style
 @Composable
 private fun RangeButton(
