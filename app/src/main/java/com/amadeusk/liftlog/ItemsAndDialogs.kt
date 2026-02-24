@@ -93,51 +93,56 @@ fun GraphRangeSelector(
     }
 }
 
-// Buttons for selecting rep filter (1/3/6/8/all)
+// Dropdown for selecting rep filter (1/3/6/8/all)
 @Composable
 fun RepRangeSelector(
     selectedRange: RepRange,
     onRangeSelected: (RepRange) -> Unit
 ) {
-    Row(
+    var expanded by remember { mutableStateOf(false) }
+
+    val label = when (selectedRange) {
+        RepRange.ONE -> "1 rep"
+        RepRange.THREE -> "3 rep"
+        RepRange.SIX -> "6 rep"
+        RepRange.EIGHT -> "8 rep"
+        RepRange.ALL -> "All reps"
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
-        RepRangeButton("1 rep", RepRange.ONE, selectedRange, onRangeSelected)
-        RepRangeButton("3 rep", RepRange.THREE, selectedRange, onRangeSelected)
-        RepRangeButton("6 rep", RepRange.SIX, selectedRange, onRangeSelected)
-        RepRangeButton("8 rep", RepRange.EIGHT, selectedRange, onRangeSelected)
-        RepRangeButton("All", RepRange.ALL, selectedRange, onRangeSelected)
-    }
-}
+        Text("Rep range", style = MaterialTheme.typography.labelMedium)
 
-@Composable
-private fun RepRangeButton(
-    label: String,
-    range: RepRange,
-    selectedRange: RepRange,
-    onRangeSelected: (RepRange) -> Unit
-) {
-    val selected = selectedRange == range
+        OutlinedButton(
+            onClick = { expanded = true },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(label)
+        }
 
-    OutlinedButton(
-        onClick = { onRangeSelected(range) },
-        colors = if (selected) {
-            ButtonDefaults.outlinedButtonColors(
-                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-            )
-        } else {
-            ButtonDefaults.outlinedButtonColors()
-        },
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-    ) {
-        Text(
-            text = label,
-            color = if (selected) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-            style = MaterialTheme.typography.labelLarge
-        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            listOf(
+                "1 rep" to RepRange.ONE,
+                "3 rep" to RepRange.THREE,
+                "6 rep" to RepRange.SIX,
+                "8 rep" to RepRange.EIGHT,
+                "All reps" to RepRange.ALL
+            ).forEach { (text, value) ->
+                DropdownMenuItem(
+                    text = { Text(text) },
+                    onClick = {
+                        onRangeSelected(value)
+                        expanded = false
+                    }
+                )
+            }
+        }
     }
 }
 

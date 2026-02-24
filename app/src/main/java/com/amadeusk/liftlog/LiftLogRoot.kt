@@ -819,7 +819,7 @@ private fun DashboardScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Trend",
+                        text = "Bodyweight",
                         style = MaterialTheme.typography.titleSmall
                     )
 
