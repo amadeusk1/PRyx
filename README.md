@@ -19,6 +19,19 @@ Users can add, edit, delete, and filter entries directly from the interface.
 
 ---
 
+## Project structure
+
+The codebase is organized to keep screens, UI components, charts, and utilities separate:
+
+- `app/src/main/java/com/amadeusk/liftlog/LiftLogRoot.kt`: App scaffold, navigation, and main state wiring
+- `app/src/main/java/com/amadeusk/liftlog/ui/screens/`: Screens (Dashboard, PR/Bodyweight tabs live in `LiftLogRoot`, Tools, Info, Leaderboard)
+- `app/src/main/java/com/amadeusk/liftlog/ui/components/`: Reusable UI building blocks (selectors, list items, dialogs, date input)
+- `app/src/main/java/com/amadeusk/liftlog/ui/charts/`: Chart rendering (`ProfessionalLineChart`, `ExerciseGraph`, `BodyWeightGraph`)
+- `app/src/main/java/com/amadeusk/liftlog/util/UiUtils.kt`: Shared enums + helpers (ranges, filters, units, daily quote, streak)
+- `app/src/main/java/com/amadeusk/liftlog/data/`: Data models + local persistence (PRs, bodyweight, user settings)
+
+---
+
 ## Features
 
 ### PR Tracking
