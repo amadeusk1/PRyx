@@ -33,6 +33,8 @@ import com.amadeusk.liftlog.data.loadUseKg
 import com.amadeusk.liftlog.data.saveUseKg
 import com.amadeusk.liftlog.data.loadDarkTheme
 import com.amadeusk.liftlog.data.saveDarkTheme
+import com.amadeusk.liftlog.currentActivityStreak
+import com.amadeusk.liftlog.getDailyQuote
 
 // App theme
 import com.amadeusk.liftlog.ui.theme.LiftLogTheme
@@ -690,6 +692,10 @@ private fun DashboardScreen(
 ) {
     val scrollState = rememberScrollState()
     val coreLifts = listOf("Bench Press", "Squat", "Deadlift")
+    val quote = remember { getDailyQuote() }
+    val streak = remember(prs, bodyWeights) {
+        currentActivityStreak(prs = prs, bodyWeights = bodyWeights)
+    }
 
     Column(
         modifier = Modifier
@@ -698,6 +704,53 @@ private fun DashboardScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // -------- DAILY QUOTE --------
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "\"${quote.text}\"",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = quote.author,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
+        // -------- STREAK --------
+        Card(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text("Daily streak", style = MaterialTheme.typography.titleSmall)
+                if (streak > 0) {
+                    Text(
+                        text = "$streak day${if (streak == 1) "" else "s"} logged in a row",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    Text(
+                        text = "Log a PR or bodyweight today to start your streak.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+
         // -------- LIFTS SECTION --------
         Text(
             text = "Lifts",
