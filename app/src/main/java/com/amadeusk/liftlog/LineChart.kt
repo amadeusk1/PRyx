@@ -58,7 +58,9 @@ fun <T> ProfessionalLineChart(
     getValue: (T) -> Double,       // Extract numeric y-value from item
     getLabel: (T) -> String,       // Extract x-axis label from item
     formatValue: (Double) -> String, // Format values for labels / tooltip
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showAxisLabels: Boolean = true,
+    showTitle: Boolean = true
 ) {
     // Need at least 2 points to draw a line
     if (items.size < 2) {
@@ -97,11 +99,13 @@ fun <T> ProfessionalLineChart(
 
     Column(modifier = modifier) {
         // Chart title
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            modifier = Modifier.padding(bottom = 6.dp)
-        )
+        if (showTitle && title.isNotEmpty()) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+        }
 
         // Card-like surface behind the chart
         Surface(
@@ -224,21 +228,23 @@ fun <T> ProfessionalLineChart(
                             strokeWidth = 1.5f
                         )
 
-                        // Value label on the left
-                        val v = paddedMax - (paddedRange * frac)
-                        drawContext.canvas.nativeCanvas.apply {
-                            val paint = android.graphics.Paint().apply {
-                                isAntiAlias = true
-                                textSize = 28f
-                                color = axisTextColor.toArgb()
-                                textAlign = android.graphics.Paint.Align.RIGHT
+                        if (showAxisLabels) {
+                            // Value label on the left
+                            val v = paddedMax - (paddedRange * frac)
+                            drawContext.canvas.nativeCanvas.apply {
+                                val paint = android.graphics.Paint().apply {
+                                    isAntiAlias = true
+                                    textSize = 28f
+                                    color = axisTextColor.toArgb()
+                                    textAlign = android.graphics.Paint.Align.RIGHT
+                                }
+                                drawText(
+                                    formatValue(v),
+                                    plotLeft - 22f, // padding from plot area
+                                    y + 10f,
+                                    paint
+                                )
                             }
-                            drawText(
-                                formatValue(v),
-                                plotLeft - 22f, // padding from plot area
-                                y + 10f,
-                                paint
-                            )
                         }
                     }
 
@@ -257,26 +263,28 @@ fun <T> ProfessionalLineChart(
                     }
 
                     // --- X LABELS ---
-                    val targetLabels = 4
-                    val stride = (sorted.size / targetLabels).coerceAtLeast(1)
-                    val xLabelY = plotBottom + 40f // pushed down for readability
+                    if (showAxisLabels) {
+                        val targetLabels = 4
+                        val stride = (sorted.size / targetLabels).coerceAtLeast(1)
+                        val xLabelY = plotBottom + 40f // pushed down for readability
 
-                    pts.forEachIndexed { i, p ->
-                        // Label every N points, and always label the last point
-                        if (i % stride == 0 || i == pts.lastIndex) {
-                            drawContext.canvas.nativeCanvas.apply {
-                                val paint = android.graphics.Paint().apply {
-                                    isAntiAlias = true
-                                    textSize = 26f
-                                    color = axisTextColor.toArgb()
-                                    textAlign = android.graphics.Paint.Align.CENTER
+                        pts.forEachIndexed { i, p ->
+                            // Label every N points, and always label the last point
+                            if (i % stride == 0 || i == pts.lastIndex) {
+                                drawContext.canvas.nativeCanvas.apply {
+                                    val paint = android.graphics.Paint().apply {
+                                        isAntiAlias = true
+                                        textSize = 26f
+                                        color = axisTextColor.toArgb()
+                                        textAlign = android.graphics.Paint.Align.CENTER
+                                    }
+                                    drawText(
+                                        p.label,
+                                        p.x,
+                                        xLabelY,
+                                        paint
+                                    )
                                 }
-                                drawText(
-                                    p.label,
-                                    p.x,
-                                    xLabelY,
-                                    paint
-                                )
                             }
                         }
                     }

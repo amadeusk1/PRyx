@@ -1,13 +1,17 @@
 package com.amadeusk.liftlog
 
 // Compose layouts + lists
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 // Icons
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 
@@ -27,7 +31,7 @@ import com.amadeusk.liftlog.data.loadBodyWeightsFromFile
 import com.amadeusk.liftlog.data.saveBodyWeightsToFile
 
 // Top-level pages (separate from the tab row)
-private enum class TopPage { MAIN, INFO, ANNOUNCEMENTS, LEADERBOARD }
+private enum class TopPage { DASHBOARD, TRAINING, INFO, ANNOUNCEMENTS, LEADERBOARD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +84,7 @@ fun LiftLogRoot(viewModel: PRViewModel) {
     var showSettingsDialog by remember { mutableStateOf(false) }
 
     // Which top-level page we are currently showing
-    var topPage by remember { mutableStateOf(TopPage.MAIN) }
+    var topPage by remember { mutableStateOf(TopPage.DASHBOARD) }
 
     // Main app layout structure (top bar + FAB + content)
     Scaffold(
@@ -91,17 +95,21 @@ fun LiftLogRoot(viewModel: PRViewModel) {
                 // Left side: Info / Back + Announcements icon
                 navigationIcon = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Toggle between main view and info screen
+                        // Toggle between dashboard and info screen
                         TextButton(
                             onClick = {
-                                topPage = if (topPage == TopPage.MAIN) TopPage.INFO else TopPage.MAIN
+                                topPage = if (topPage == TopPage.INFO) {
+                                    TopPage.DASHBOARD
+                                } else {
+                                    TopPage.INFO
+                                }
                             }
                         ) {
-                            Text(if (topPage == TopPage.MAIN) "Info" else "Back")
+                            Text(if (topPage == TopPage.INFO) "Back" else "Info")
                         }
 
-                        // Only show announcements button on MAIN page
-                        if (topPage == TopPage.MAIN) {
+                        // Announcements button (hidden when already on announcements page)
+                        if (topPage != TopPage.ANNOUNCEMENTS) {
                             IconButton(onClick = { topPage = TopPage.ANNOUNCEMENTS }) {
                                 Icon(Icons.Filled.Notifications, contentDescription = "Announcements")
                             }
@@ -109,8 +117,16 @@ fun LiftLogRoot(viewModel: PRViewModel) {
                     }
                 },
 
-                // Right side: Leaderboard + Settings
+                // Right side: Home + Leaderboard + Settings
                 actions = {
+                    // Quick return to dashboard
+                    IconButton(
+                        onClick = { topPage = TopPage.DASHBOARD },
+                        enabled = topPage != TopPage.DASHBOARD
+                    ) {
+                        Icon(Icons.Filled.Home, contentDescription = "Home")
+                    }
+
                     // Open leaderboard page (disable button if already there)
                     IconButton(
                         onClick = { topPage = TopPage.LEADERBOARD },
@@ -128,8 +144,8 @@ fun LiftLogRoot(viewModel: PRViewModel) {
         },
 
         floatingActionButton = {
-            // Only show FAB on MAIN and not on Tools tab
-            if (topPage == TopPage.MAIN && currentTab != LiftLogTab.TOOLS) {
+            // Only show FAB on TRAINING and not on Tools tab
+            if (topPage == TopPage.TRAINING && currentTab != LiftLogTab.TOOLS) {
                 FloatingActionButton(
                     onClick = {
                         // Open the correct "add" dialog depending on tab
@@ -155,6 +171,34 @@ fun LiftLogRoot(viewModel: PRViewModel) {
 
             // If user is on a top-level page, show it and exit early
             when (topPage) {
+                TopPage.DASHBOARD -> {
+                    DashboardScreen(
+                        prs = uiState.prs,
+                        bodyWeights = bodyWeights,
+                        useKg = useKg,
+                        onOpenExercise = { exercise ->
+                            selectedExercise = exercise
+                            selectedGraphPr = null
+                            selectedRange = GraphRange.MONTH
+                            currentTab = LiftLogTab.PRS
+                            topPage = TopPage.TRAINING
+                        },
+                        onOpenBodyweight = {
+                            selectedBwEntry = null
+                            selectedRange = GraphRange.MONTH
+                            currentTab = LiftLogTab.BODYWEIGHT
+                            topPage = TopPage.TRAINING
+                        },
+                        onOpenTools = {
+                            currentTab = LiftLogTab.TOOLS
+                            topPage = TopPage.TRAINING
+                        },
+                        onOpenLeaderboard = { topPage = TopPage.LEADERBOARD },
+                        onOpenAnnouncements = { topPage = TopPage.ANNOUNCEMENTS },
+                        onOpenInfo = { topPage = TopPage.INFO }
+                    )
+                    return@Column
+                }
                 TopPage.INFO -> {
                     InfoScreen()
                     return@Column
@@ -175,32 +219,35 @@ fun LiftLogRoot(viewModel: PRViewModel) {
             }
 
             // ------------------ TAB BAR (MAIN PAGE) ------------------
-            TabRow(
-                selectedTabIndex = currentTab.ordinal,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Tab(
-                    selected = currentTab == LiftLogTab.PRS,
-                    onClick = { currentTab = LiftLogTab.PRS },
-                    text = { Text("PRs") }
-                )
-                Tab(
-                    selected = currentTab == LiftLogTab.BODYWEIGHT,
-                    onClick = { currentTab = LiftLogTab.BODYWEIGHT },
-                    text = { Text("Bodyweight") }
-                )
-                Tab(
-                    selected = currentTab == LiftLogTab.TOOLS,
-                    onClick = { currentTab = LiftLogTab.TOOLS },
-                    text = { Text("Tools") }
-                )
+            if (topPage == TopPage.TRAINING) {
+                TabRow(
+                    selectedTabIndex = currentTab.ordinal,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Tab(
+                        selected = currentTab == LiftLogTab.PRS,
+                        onClick = { currentTab = LiftLogTab.PRS },
+                        text = { Text("PRs") }
+                    )
+                    Tab(
+                        selected = currentTab == LiftLogTab.BODYWEIGHT,
+                        onClick = { currentTab = LiftLogTab.BODYWEIGHT },
+                        text = { Text("Bodyweight") }
+                    )
+                    Tab(
+                        selected = currentTab == LiftLogTab.TOOLS,
+                        onClick = { currentTab = LiftLogTab.TOOLS },
+                        text = { Text("Tools") }
+                    )
+                }
             }
 
             // ------------------ TAB CONTENT ------------------
-            when (currentTab) {
+            if (topPage == TopPage.TRAINING) {
+                when (currentTab) {
 
-                // ---------- PR TAB ----------
-                LiftLogTab.PRS -> {
+                    // ---------- PR TAB ----------
+                    LiftLogTab.PRS -> {
                     // Only show selector + graph if we have exercises
                     if (exercises.isNotEmpty()) {
                         // Exercise dropdown
@@ -321,10 +368,10 @@ fun LiftLogRoot(viewModel: PRViewModel) {
                             }
                         }
                     }
-                }
+                    }
 
-                // ---------- BODYWEIGHT TAB ----------
-                LiftLogTab.BODYWEIGHT -> {
+                    // ---------- BODYWEIGHT TAB ----------
+                    LiftLogTab.BODYWEIGHT -> {
                     // Empty state (no entries)
                     if (bodyWeights.isEmpty()) {
                         Box(
@@ -426,10 +473,11 @@ fun LiftLogRoot(viewModel: PRViewModel) {
                             }
                         }
                     }
-                }
+                    }
 
-                // ---------- TOOLS TAB ----------
-                LiftLogTab.TOOLS -> ToolsScreen()
+                    // ---------- TOOLS TAB ----------
+                    LiftLogTab.TOOLS -> ToolsScreen()
+                }
             }
         }
     }
@@ -567,5 +615,215 @@ fun LiftLogRoot(viewModel: PRViewModel) {
                 bwBeingEdited = null
             }
         )
+    }
+}
+
+@Composable
+private fun DashboardScreen(
+    prs: List<PR>,
+    bodyWeights: List<BodyWeightEntry>,
+    useKg: Boolean,
+    onOpenExercise: (String) -> Unit,
+    onOpenBodyweight: () -> Unit,
+    onOpenTools: () -> Unit,
+    onOpenLeaderboard: () -> Unit,
+    onOpenAnnouncements: () -> Unit,
+    onOpenInfo: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+    val coreLifts = listOf("Bench Press", "Squat", "Deadlift")
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Overview",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        // Core lift previews (up to 5 most recent entries so we always have data when it exists)
+        coreLifts.forEach { lift ->
+            val liftPrs = remember(prs, lift) {
+                prs
+                    .filter { it.exercise == lift }
+                    .sortedByDescending { parsePrDateOrMin(it.date) }
+                    .take(5)
+                    .sortedBy { parsePrDateOrMin(it.date) }
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenExercise(lift) }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = lift,
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    if (liftPrs.isNotEmpty()) {
+                        ExerciseGraph(
+                            prs = liftPrs,
+                            selectedPr = null,
+                            onPointSelected = {},
+                            useKg = useKg,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .padding(top = 4.dp),
+                            showAxisLabels = false,
+                            showTitle = false
+                        )
+                    } else {
+                        Text(
+                            text = "No PRs logged yet. Tap to add and view more.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+
+        // Bodyweight preview
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenBodyweight() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Bodyweight",
+                    style = MaterialTheme.typography.titleSmall
+                )
+
+                val bwPreview = remember(bodyWeights) {
+                    bodyWeights
+                        .sortedByDescending { parsePrDateOrMin(it.date) }
+                        .take(5)
+                        .sortedBy { parsePrDateOrMin(it.date) }
+                }
+
+                if (bwPreview.isNotEmpty()) {
+                    BodyWeightGraph(
+                        entries = bwPreview,
+                        selectedEntry = null,
+                        onPointSelected = {},
+                        useKg = useKg,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                            .padding(top = 4.dp),
+                        showAxisLabels = false,
+                        showTitle = false
+                    )
+                } else {
+                    Text(
+                        text = "No bodyweight entries yet. Tap to add your first entry.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+
+        // Other feature previews
+        Text(
+            text = "More from PRyx",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenTools() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text("Tools & Calculators", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = "TDEE, 1RM, protein needs, and body fat calculators.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenLeaderboard() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text("Leaderboard", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = "See how your PRs stack up.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onOpenAnnouncements() }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("Announcements", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = "Latest updates and notes.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onOpenInfo() }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("App Info", style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        text = "Tips, how PRyx works, and more.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
     }
 }

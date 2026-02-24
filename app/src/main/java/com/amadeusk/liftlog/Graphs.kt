@@ -28,7 +28,9 @@ fun ExerciseGraph(
     selectedPr: PR?,                   // Currently selected PR (highlighted point)
     onPointSelected: (PR) -> Unit,     // Callback when a point is tapped
     useKg: Boolean,                    // Whether to display values in kg
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showAxisLabels: Boolean = true,
+    showTitle: Boolean = true
 ) {
     // Sort PRs by date, then by ID for stable ordering
     val sorted = remember(prs) {
@@ -54,7 +56,9 @@ fun ExerciseGraph(
         // Format value label (already converted)
         formatValue = { v -> formatGraphWeight(v, useKg) },
 
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(),
+        showAxisLabels = showAxisLabels,
+        showTitle = showTitle
     )
 }
 
@@ -65,7 +69,9 @@ fun BodyWeightGraph(
     selectedEntry: BodyWeightEntry?,           // Currently selected entry
     onPointSelected: (BodyWeightEntry) -> Unit,// Callback when a point is tapped
     useKg: Boolean,                            // Whether to display values in kg
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showAxisLabels: Boolean = true,
+    showTitle: Boolean = true
 ) {
     // Sort entries by date, then by ID for consistency
     val sorted = remember(entries) {
@@ -91,7 +97,9 @@ fun BodyWeightGraph(
         // Format value label (already converted)
         formatValue = { v -> formatGraphWeight(v, useKg) },
 
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(),
+        showAxisLabels = showAxisLabels,
+        showTitle = showTitle
     )
 }
 
