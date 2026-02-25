@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 
 // Icons
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
@@ -18,7 +19,12 @@ import androidx.compose.material.icons.filled.Star
 // Material UI
 import androidx.compose.material3.*
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -40,10 +46,13 @@ import com.amadeusk.liftlog.ui.components.BodyWeightItem
 import com.amadeusk.liftlog.ui.components.ExerciseSelector
 import com.amadeusk.liftlog.ui.components.GraphRangeSelector
 import com.amadeusk.liftlog.ui.components.PRItem
+import com.amadeusk.liftlog.ui.components.LiveLeaderboardSubmitDialog
 import com.amadeusk.liftlog.ui.components.PrDialog
 import com.amadeusk.liftlog.ui.components.RepRangeSelector
 import com.amadeusk.liftlog.ui.screens.InfoScreen
 import com.amadeusk.liftlog.ui.screens.LeaderboardScreen
+import com.amadeusk.liftlog.ui.screens.LiveLeaderboardScreen
+import com.amadeusk.liftlog.ui.screens.SplashScreen
 import com.amadeusk.liftlog.ui.screens.ToolsScreen
 import com.amadeusk.liftlog.util.GraphRange
 import com.amadeusk.liftlog.util.LiftLogTab
@@ -61,7 +70,7 @@ import com.amadeusk.liftlog.util.parsePrDateOrMin
 import com.amadeusk.liftlog.ui.theme.LiftLogTheme
 
 // Top-level pages (separate from the tab row)
-private enum class TopPage { DASHBOARD, TRAINING, INFO, LEADERBOARD }
+private enum class TopPage { DASHBOARD, TRAINING, INFO, LEADERBOARD, LIVE_LEADERBOARD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,16 +80,25 @@ fun LiftLogRoot(viewModel: PRViewModel) {
     var useDarkTheme by remember(context, systemDark) {
         mutableStateOf(loadDarkTheme(context, systemDark))
     }
+    var showSplash by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) {
+        delay(2200)
+        showSplash = false
+    }
 
     LiftLogTheme(darkTheme = useDarkTheme) {
-        LiftLogRootContent(
-            viewModel = viewModel,
-            useDarkTheme = useDarkTheme,
-            onDarkThemeChange = { enabled ->
-                useDarkTheme = enabled
-                saveDarkTheme(context, enabled)
-            }
-        )
+        if (showSplash) {
+            SplashScreen()
+        } else {
+            LiftLogRootContent(
+                viewModel = viewModel,
+                useDarkTheme = useDarkTheme,
+                onDarkThemeChange = { enabled ->
+                    useDarkTheme = enabled
+                    saveDarkTheme(context, enabled)
+                }
+            )
+        }
     }
 }
 
@@ -144,6 +162,10 @@ private fun LiftLogRootContent(
     // Which top-level page we are currently showing
     var topPage by remember { mutableStateOf(TopPage.DASHBOARD) }
 
+    // Live leaderboard: submit dialog + ViewModel (for FAB and dialog)
+    var showLiveSubmitDialog by remember { mutableStateOf(false) }
+    val liveLeaderboardViewModel: LiveLeaderboardViewModel = viewModel()
+
     // Main app layout structure (top bar + FAB + content)
     Scaffold(
         topBar = {
@@ -176,14 +198,22 @@ private fun LiftLogRootContent(
                     }
                 },
 
-                // Right side: Leaderboard + Settings
+                // Right side: Live leaderboard (trophy) + Personal leaderboard (star) + Settings
                 actions = {
-                    // Open leaderboard page (disable button if already there)
+                    // Live leaderboard — trophy icon (left of star)
+                    IconButton(
+                        onClick = { topPage = TopPage.LIVE_LEADERBOARD },
+                        enabled = topPage != TopPage.LIVE_LEADERBOARD
+                    ) {
+                        Icon(Icons.Filled.EmojiEvents, contentDescription = "Live leaderboard")
+                    }
+
+                    // Personal leaderboard — star icon
                     IconButton(
                         onClick = { topPage = TopPage.LEADERBOARD },
                         enabled = topPage != TopPage.LEADERBOARD
                     ) {
-                        Icon(Icons.Filled.Star, contentDescription = "Leaderboard")
+                        Icon(Icons.Filled.Star, contentDescription = "Personal leaderboard")
                     }
 
                     // Open settings dialog
@@ -195,19 +225,24 @@ private fun LiftLogRootContent(
         },
 
         floatingActionButton = {
-            // Only show FAB on TRAINING and not on Tools tab
-            if (topPage == TopPage.TRAINING && currentTab != LiftLogTab.TOOLS) {
-                FloatingActionButton(
-                    onClick = {
-                        // Open the correct "add" dialog depending on tab
-                        when (currentTab) {
-                            LiftLogTab.PRS -> showAddPrDialog = true
-                            LiftLogTab.BODYWEIGHT -> showAddBwDialog = true
-                            else -> {}
-                        }
+            when {
+                topPage == TopPage.LIVE_LEADERBOARD -> {
+                    FloatingActionButton(onClick = { showLiveSubmitDialog = true }) {
+                        Text("+")
                     }
-                ) {
-                    Text("+")
+                }
+                topPage == TopPage.TRAINING && currentTab != LiftLogTab.TOOLS -> {
+                    FloatingActionButton(
+                        onClick = {
+                            when (currentTab) {
+                                LiftLogTab.PRS -> showAddPrDialog = true
+                                LiftLogTab.BODYWEIGHT -> showAddBwDialog = true
+                                else -> {}
+                            }
+                        }
+                    ) {
+                        Text("+")
+                    }
                 }
             }
         }
@@ -245,8 +280,7 @@ private fun LiftLogRootContent(
                             currentTab = LiftLogTab.TOOLS
                             topPage = TopPage.TRAINING
                         },
-                        onOpenLeaderboard = { topPage = TopPage.LEADERBOARD },
-                        onOpenInfo = { topPage = TopPage.INFO }
+                        onOpenLeaderboard = { topPage = TopPage.LEADERBOARD }
                     )
                     return@Column
                 }
@@ -257,6 +291,14 @@ private fun LiftLogRootContent(
                 TopPage.LEADERBOARD -> {
                     LeaderboardScreen(
                         prs = uiState.prs,
+                        useKg = useKg,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    return@Column
+                }
+                TopPage.LIVE_LEADERBOARD -> {
+                    LiveLeaderboardScreen(
+                        viewModel = liveLeaderboardViewModel,
                         useKg = useKg,
                         modifier = Modifier.fillMaxSize()
                     )
@@ -646,6 +688,15 @@ private fun LiftLogRootContent(
         )
     }
 
+    // ------------------ LIVE LEADERBOARD SUBMIT DIALOG ------------------
+    if (showLiveSubmitDialog) {
+        LiveLeaderboardSubmitDialog(
+            viewModel = liveLeaderboardViewModel,
+            useKg = useKg,
+            onDismiss = { showLiveSubmitDialog = false }
+        )
+    }
+
     // ------------------ ADD BODYWEIGHT DIALOG ------------------
     if (showAddBwDialog) {
         BodyWeightDialog(
@@ -701,6 +752,36 @@ private fun LiftLogRootContent(
 }
 
 @Composable
+private fun AnimatedDashboardSection(
+    index: Int,
+    content: @Composable () -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(index * 55L)
+        visible = true
+    }
+    val alpha by animateFloatAsState(
+        if (visible) 1f else 0f,
+        animationSpec = tween(280),
+        label = "alpha"
+    )
+    val offsetY by animateFloatAsState(
+        if (visible) 0f else 20f,
+        animationSpec = tween(280),
+        label = "offset"
+    )
+    Box(
+        modifier = Modifier.graphicsLayer {
+            this.alpha = alpha
+            translationY = offsetY
+        }
+    ) {
+        content()
+    }
+}
+
+@Composable
 private fun DashboardScreen(
     prs: List<PR>,
     bodyWeights: List<BodyWeightEntry>,
@@ -708,8 +789,7 @@ private fun DashboardScreen(
     onOpenExercise: (String) -> Unit,
     onOpenBodyweight: () -> Unit,
     onOpenTools: () -> Unit,
-    onOpenLeaderboard: () -> Unit,
-    onOpenInfo: () -> Unit
+    onOpenLeaderboard: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     val coreLifts = listOf("Bench Press", "Squat", "Deadlift")
@@ -726,6 +806,7 @@ private fun DashboardScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // -------- DAILY QUOTE --------
+        AnimatedDashboardSection(0) {
         Card(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -746,8 +827,10 @@ private fun DashboardScreen(
                 )
             }
         }
+        }
 
         // -------- STREAK --------
+        AnimatedDashboardSection(1) {
         Card(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -771,8 +854,10 @@ private fun DashboardScreen(
                 }
             }
         }
+        }
 
         // -------- LIFTS SECTION --------
+        AnimatedDashboardSection(2) {
         Text(
             text = "Lifts",
             style = MaterialTheme.typography.titleMedium
@@ -848,8 +933,10 @@ private fun DashboardScreen(
                 }
             }
         }
+        }
 
         // -------- BODYWEIGHT SECTION --------
+        AnimatedDashboardSection(3) {
         Text(
             text = "Bodyweight",
             style = MaterialTheme.typography.titleMedium
@@ -914,8 +1001,10 @@ private fun DashboardScreen(
                 }
             }
         }
+        }
 
         // Other feature previews
+        AnimatedDashboardSection(4) {
         Text(
             text = "More from PRyx",
             style = MaterialTheme.typography.titleMedium
@@ -959,23 +1048,6 @@ private fun DashboardScreen(
             }
         }
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onOpenInfo() }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text("App Info", style = MaterialTheme.typography.titleSmall)
-                Text(
-                    text = "Tips, how PRyx works, and more.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
         }
     }
 }

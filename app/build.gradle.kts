@@ -8,15 +8,6 @@ android {
     namespace = "com.amadeusk.liftlog"
     compileSdk = 36
 
-    defaultConfig {
-        applicationId = "com.amadeusk.liftlog"
-        minSdk = 26
-        targetSdk = 36
-        versionCode = 11
-        versionName = "2.1"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
 
     buildTypes {
         release {
@@ -36,6 +27,21 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    defaultConfig {
+        applicationId = "com.amadeusk.liftlog"
+        minSdk = 26
+        targetSdk = 36
+        versionCode = 13
+        versionName = "2.3"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    sourceSets {
+        getByName("main") {
+            java.srcDirs("src/main/java", "src/main/kotlin")
+        }
     }
 }
 
@@ -57,9 +63,13 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("androidx.compose.material:material-icons-extended:1.7.5")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
 
+    // Networking (live leaderboard submit + status)
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
     // Jetpack Compose Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
-
 }
