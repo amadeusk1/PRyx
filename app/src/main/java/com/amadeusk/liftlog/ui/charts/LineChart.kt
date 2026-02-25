@@ -230,13 +230,15 @@ fun <T> ProfessionalLineChart(
                     // Save points so taps/tooltip can use them
                     chartPoints = pts
 
-                    // Subtle background inside plot area
-                    drawRoundRect(
-                        color = colors.surfaceVariant.copy(alpha = 0.25f),
-                        topLeft = Offset(plotLeft, plotTop),
-                        size = Size(plotW, plotH),
-                        cornerRadius = CornerRadius(18f, 18f)
-                    )
+                    // Subtle background inside plot area (skip in compact/dashboard mode so gradient stands out)
+                    if (showGrid) {
+                        drawRoundRect(
+                            color = colors.surfaceVariant.copy(alpha = 0.25f),
+                            topLeft = Offset(plotLeft, plotTop),
+                            size = Size(plotW, plotH),
+                            cornerRadius = CornerRadius(18f, 18f)
+                        )
+                    }
 
                     // --- GRIDLINES + Y LABELS ---
                     if (showGrid) {

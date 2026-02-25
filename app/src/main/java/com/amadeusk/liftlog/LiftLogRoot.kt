@@ -3,6 +3,7 @@ package com.amadeusk.liftlog
 // Compose layouts + lists
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -57,6 +58,10 @@ import com.amadeusk.liftlog.ui.screens.ToolsScreen
 import com.amadeusk.liftlog.util.GraphRange
 import com.amadeusk.liftlog.util.LiftLogTab
 import com.amadeusk.liftlog.util.RepRange
+import com.amadeusk.liftlog.util.StrengthTrend
+import com.amadeusk.liftlog.util.ThisWeekSnapshot
+import com.amadeusk.liftlog.util.computeThisWeekSnapshot
+import com.amadeusk.liftlog.util.KG_TO_LB
 import com.amadeusk.liftlog.util.currentActivityStreak
 import com.amadeusk.liftlog.util.filterBodyWeightsByRange
 import com.amadeusk.liftlog.util.filterPrsByRange
@@ -170,7 +175,12 @@ private fun LiftLogRootContent(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("PRyx") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("PR", color = MaterialTheme.colorScheme.onSurface)
+                        Text("yx", color = MaterialTheme.colorScheme.primary)
+                    }
+                },
 
                 // Left side: Info / Back + Announcements icon
                 navigationIcon = {
@@ -280,7 +290,12 @@ private fun LiftLogRootContent(
                             currentTab = LiftLogTab.TOOLS
                             topPage = TopPage.TRAINING
                         },
-                        onOpenLeaderboard = { topPage = TopPage.LEADERBOARD }
+                        onOpenLeaderboard = { topPage = TopPage.LEADERBOARD },
+                        onOpenLogDifferentExercise = {
+                            currentTab = LiftLogTab.PRS
+                            topPage = TopPage.TRAINING
+                            showAddPrDialog = true
+                        }
                     )
                     return@Column
                 }
@@ -789,7 +804,8 @@ private fun DashboardScreen(
     onOpenExercise: (String) -> Unit,
     onOpenBodyweight: () -> Unit,
     onOpenTools: () -> Unit,
-    onOpenLeaderboard: () -> Unit
+    onOpenLeaderboard: () -> Unit,
+    onOpenLogDifferentExercise: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     val coreLifts = listOf("Bench Press", "Squat", "Deadlift")
@@ -808,22 +824,30 @@ private fun DashboardScreen(
         // -------- DAILY QUOTE --------
         AnimatedDashboardSection(0) {
         Card(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "\"${quote.text}\"",
-                    style = MaterialTheme.typography.titleMedium
+                    text = "Daily quote",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = quote.author,
+                    text = "“${quote.text}”",
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = "— ${quote.author}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.End)
                 )
             }
         }
@@ -832,13 +856,15 @@ private fun DashboardScreen(
         // -------- STREAK --------
         AnimatedDashboardSection(1) {
         Card(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text("Daily streak", style = MaterialTheme.typography.titleSmall)
                 if (streak > 0) {
@@ -860,18 +886,26 @@ private fun DashboardScreen(
         AnimatedDashboardSection(2) {
         Text(
             text = "Lifts",
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 4.dp)
         )
 
         Card(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                val liftColors = listOf(
+                    MaterialTheme.colorScheme.primary,
+                    MaterialTheme.colorScheme.tertiary,
+                    MaterialTheme.colorScheme.secondary
+                )
                 coreLifts.forEachIndexed { index, lift ->
                     val liftPrs = remember(prs, lift) {
                         prs
@@ -900,7 +934,7 @@ private fun DashboardScreen(
                             if (latest != null) {
                                 Text(
                                     text = formatWeight(latest.weight, useKg),
-                                    style = MaterialTheme.typography.labelSmall
+                                    style = MaterialTheme.typography.labelMedium
                                 )
                             }
                         }
@@ -913,11 +947,12 @@ private fun DashboardScreen(
                                 useKg = useKg,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(140.dp)
-                                    .padding(top = 6.dp),
+                                    .height(152.dp)
+                                    .padding(top = 8.dp),
                                 showAxisLabels = false,
                                 showTitle = false,
-                                showGrid = false
+                                showGrid = false,
+                                lineColor = liftColors.getOrNull(index)
                             )
                         } else {
                             Text(
@@ -928,8 +963,23 @@ private fun DashboardScreen(
                     }
 
                     if (index != coreLifts.lastIndex) {
-                        Divider(modifier = Modifier.padding(vertical = 6.dp))
+                        Divider(modifier = Modifier.padding(vertical = 8.dp))
                     }
+                }
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenLogDifferentExercise() },
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Log different exercise",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
@@ -939,18 +989,21 @@ private fun DashboardScreen(
         AnimatedDashboardSection(3) {
         Text(
             text = "Bodyweight",
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 4.dp)
         )
 
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onOpenBodyweight() }
+                .clickable { onOpenBodyweight() },
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 val bwPreview = remember(bodyWeights) {
@@ -974,7 +1027,7 @@ private fun DashboardScreen(
                     if (latest != null) {
                         Text(
                             text = formatWeight(latest.weight, useKg),
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelMedium
                         )
                     }
                 }
@@ -987,11 +1040,12 @@ private fun DashboardScreen(
                         useKg = useKg,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(160.dp)
-                            .padding(top = 6.dp),
+                            .height(172.dp)
+                            .padding(top = 8.dp),
                         showAxisLabels = false,
                         showTitle = false,
-                        showGrid = false
+                        showGrid = false,
+                        lineColor = MaterialTheme.colorScheme.tertiary
                     )
                 } else {
                     Text(
@@ -1003,23 +1057,127 @@ private fun DashboardScreen(
         }
         }
 
-        // Other feature previews
+        // -------- THIS WEEK SNAPSHOT --------
+        val weekSnapshot = remember(prs, bodyWeights, useKg) {
+            computeThisWeekSnapshot(prs, bodyWeights, useKg)
+        }
         AnimatedDashboardSection(4) {
         Text(
+            text = "\"This Week\" Snapshot",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 2.dp)
+        )
+        Text(
+            text = "Minimal. No gamification.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Exercises tracked", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = "${weekSnapshot.exercisesTracked}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Avg intensity", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = weekSnapshot.avgIntensity,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Volume vs last week", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = weekSnapshot.volumeVsLastWeekPercent?.let { "${if (it >= 0) "+" else ""}${"%.0f".format(it)}%" } ?: "—",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("BW change", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = weekSnapshot.bwChangeKg?.let { delta ->
+                            val sign = if (delta >= 0) "+" else "–"
+                            val abs = kotlin.math.abs(delta)
+                            val displayVal = if (useKg) abs else abs * KG_TO_LB
+                            "$sign${"%.1f".format(displayVal)} ${if (useKg) "kg" else "lb"}"
+                        } ?: "—",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Divider(modifier = Modifier.padding(vertical = 4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Strength trend", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = when (weekSnapshot.strengthTrend) {
+                            StrengthTrend.UP -> "↑"
+                            StrengthTrend.DOWN -> "↓"
+                            StrengthTrend.STABLE -> "→"
+                        },
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Fatigue estimate (volume + intensity based)", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = weekSnapshot.fatigueEstimate,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+        }
+
+        // Other feature previews
+        AnimatedDashboardSection(5) {
+        Text(
             text = "More from PRyx",
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 4.dp)
         )
 
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onOpenTools() }
+                .clickable { onOpenTools() },
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text("Tools & Calculators", style = MaterialTheme.typography.titleSmall)
                 Text(
@@ -1032,13 +1190,15 @@ private fun DashboardScreen(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onOpenLeaderboard() }
+                .clickable { onOpenLeaderboard() },
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text("Leaderboard", style = MaterialTheme.typography.titleSmall)
                 Text(

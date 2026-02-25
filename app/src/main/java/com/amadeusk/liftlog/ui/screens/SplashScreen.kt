@@ -5,6 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -59,11 +60,20 @@ fun SplashScreen(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = "LiftLog",
-                style = MaterialTheme.typography.headlineLarge,
-                color = colors.primary
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "PR",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = colors.onSurface
+                )
+                Text(
+                    text = "yx",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = colors.primary
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Your progress",

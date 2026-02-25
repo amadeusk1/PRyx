@@ -231,3 +231,69 @@ fun formatWeight(weightKg: Double, useKg: Boolean): String {
     return "${"%.1f".format(value)} $unit"
 }
 
+// ---- This Week Snapshot (minimal, no gamification) ----
+enum class StrengthTrend { UP, DOWN, STABLE }
+
+data class ThisWeekSnapshot(
+    val exercisesTracked: Int,
+    val avgIntensity: String,       // "Low" / "Medium" / "High"
+    val volumeVsLastWeekPercent: Double?,  // null if no last week volume
+    val bwChangeKg: Double?,       // null if not enough BW data
+    val strengthTrend: StrengthTrend,
+    val fatigueEstimate: String   // "Low" / "Moderate" / "High"
+)
+
+fun computeThisWeekSnapshot(
+    prs: List<PR>,
+    bodyWeights: List<BodyWeightEntry>,
+    useKg: Boolean
+): ThisWeekSnapshot {
+    val today = LocalDate.now()
+    val thisWeekStart = today.minusDays(6)
+    val lastWeekStart = today.minusDays(13)
+    val lastWeekEnd = today.minusDays(7)
+
+    val prsThisWeek = prs.filter { parsePrDateOrMin(it.date).let { d -> !d.isBefore(thisWeekStart) && !d.isAfter(today) } }
+    val prsLastWeek = prs.filter { parsePrDateOrMin(it.date).let { d -> !d.isBefore(lastWeekStart) && !d.isAfter(lastWeekEnd) } }
+
+    val exercisesTracked = prsThisWeek.map { it.exercise }.distinct().size
+
+    val avgReps = if (prsThisWeek.isEmpty()) 10.0 else prsThisWeek.map { it.reps.toDouble() }.average()
+    val avgIntensity = when {
+        avgReps <= 5 -> "High"
+        avgReps <= 8 -> "Medium"
+        else -> "Low"
+    }
+
+    val volumeThis = prsThisWeek.sumOf { it.weight * it.reps }
+    val volumeLast = prsLastWeek.sumOf { it.weight * it.reps }
+    val volumeVsLastWeekPercent = if (volumeLast > 0) ((volumeThis - volumeLast) / volumeLast) * 100 else null
+
+    val bwSorted = bodyWeights.sortedBy { parsePrDateOrMin(it.date) }
+    val bwRecent = bwSorted.lastOrNull()?.takeIf { !parsePrDateOrMin(it.date).isBefore(thisWeekStart) }?.weight
+    val bwOld = bwSorted.filter { parsePrDateOrMin(it.date).isBefore(thisWeekStart) }.lastOrNull()?.weight
+    val bwChangeKg = if (bwRecent != null && bwOld != null) bwRecent - bwOld else null
+
+    val strengthTrend = when {
+        volumeLast <= 0 -> StrengthTrend.STABLE
+        volumeThis > volumeLast * 1.02 -> StrengthTrend.UP
+        volumeThis < volumeLast * 0.98 -> StrengthTrend.DOWN
+        else -> StrengthTrend.STABLE
+    }
+
+    val fatigueEstimate = when {
+        volumeVsLastWeekPercent != null && volumeVsLastWeekPercent > 15 && avgIntensity == "High" -> "High"
+        volumeVsLastWeekPercent != null && (volumeVsLastWeekPercent > 8 || avgIntensity == "High") -> "Moderate"
+        else -> "Low"
+    }
+
+    return ThisWeekSnapshot(
+        exercisesTracked = exercisesTracked,
+        avgIntensity = avgIntensity,
+        volumeVsLastWeekPercent = volumeVsLastWeekPercent,
+        bwChangeKg = bwChangeKg,
+        strengthTrend = strengthTrend,
+        fatigueEstimate = fatigueEstimate
+    )
+}
+
