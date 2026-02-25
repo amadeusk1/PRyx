@@ -69,7 +69,8 @@ fun <T> ProfessionalLineChart(
     showAxisLabels: Boolean = true,
     showTitle: Boolean = true,
     showGrid: Boolean = true,
-    lineColorOverride: Color? = null
+    lineColorOverride: Color? = null,
+    interactive: Boolean = true
 ) {
     // Need at least 2 points to draw a line
     if (items.size < 2) {
@@ -167,22 +168,23 @@ fun <T> ProfessionalLineChart(
                     )
                 }
 
-                // Canvas for drawing the chart
+                // Canvas for drawing the chart (interactive = false lets taps pass through to parent, e.g. dashboard)
                 Canvas(
                     modifier = Modifier
                         .fillMaxSize()
-                        // Tap detection to select nearest point
-                        .pointerInput(sorted) {
-                            detectTapGestures { tap ->
-                                val hit = chartPoints.minByOrNull { pt ->
-                                    hypot(pt.x - tap.x, pt.y - tap.y)
+                        .then(
+                            if (interactive) Modifier.pointerInput(sorted) {
+                                detectTapGestures { tap ->
+                                    val hit = chartPoints.minByOrNull { pt ->
+                                        hypot(pt.x - tap.x, pt.y - tap.y)
+                                    }
+                                    if (hit != null) {
+                                        val d = hypot(hit.x - tap.x, hit.y - tap.y)
+                                        if (d <= hitRadiusPx) onSelected(hit.payload)
+                                    }
                                 }
-                                if (hit != null) {
-                                    val d = hypot(hit.x - tap.x, hit.y - tap.y)
-                                    if (d <= hitRadiusPx) onSelected(hit.payload)
-                                }
-                            }
-                        }
+                            } else Modifier
+                        )
                 ) {
                     // Convert items into a list of values
                     val values = sorted.map(getValue)

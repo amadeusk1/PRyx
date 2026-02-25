@@ -952,7 +952,8 @@ private fun DashboardScreen(
                                 showAxisLabels = false,
                                 showTitle = false,
                                 showGrid = false,
-                                lineColor = liftColors.getOrNull(index)
+                                lineColor = liftColors.getOrNull(index),
+                                interactive = false
                             )
                         } else {
                             Text(
@@ -1045,7 +1046,8 @@ private fun DashboardScreen(
                         showAxisLabels = false,
                         showTitle = false,
                         showGrid = false,
-                        lineColor = MaterialTheme.colorScheme.tertiary
+                        lineColor = MaterialTheme.colorScheme.tertiary,
+                        interactive = false
                     )
                 } else {
                     Text(
@@ -1057,11 +1059,40 @@ private fun DashboardScreen(
         }
         }
 
+        // -------- TOOLS SHORTCUT --------
+        AnimatedDashboardSection(4) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenTools() },
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Tools",
+                    style = MaterialTheme.typography.titleSmall
+                )
+                Text(
+                    text = "TDEE, 1RM, protein, body fat",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        }
+
         // -------- THIS WEEK SNAPSHOT --------
         val weekSnapshot = remember(prs, bodyWeights, useKg) {
             computeThisWeekSnapshot(prs, bodyWeights, useKg)
         }
-        AnimatedDashboardSection(4) {
+        AnimatedDashboardSection(5) {
         Text(
             text = "\"This Week\" Snapshot",
             style = MaterialTheme.typography.titleLarge,
@@ -1159,7 +1190,7 @@ private fun DashboardScreen(
         }
 
         // Other feature previews
-        AnimatedDashboardSection(5) {
+        AnimatedDashboardSection(6) {
         Text(
             text = "More from PRyx",
             style = MaterialTheme.typography.titleLarge,

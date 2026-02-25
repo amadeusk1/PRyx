@@ -27,7 +27,8 @@ fun ExerciseGraph(
     showAxisLabels: Boolean = true,
     showTitle: Boolean = true,
     showGrid: Boolean = true,
-    lineColor: Color? = null
+    lineColor: Color? = null,
+    interactive: Boolean = true
 ) {
     val sorted = remember(prs) {
         prs.sortedWith(
@@ -48,7 +49,8 @@ fun ExerciseGraph(
         showAxisLabels = showAxisLabels,
         showTitle = showTitle,
         showGrid = showGrid,
-        lineColorOverride = lineColor
+        lineColorOverride = lineColor,
+        interactive = interactive
     )
 }
 
@@ -62,7 +64,8 @@ fun BodyWeightGraph(
     showAxisLabels: Boolean = true,
     showTitle: Boolean = true,
     showGrid: Boolean = true,
-    lineColor: Color? = null
+    lineColor: Color? = null,
+    interactive: Boolean = true
 ) {
     val sorted = remember(entries) {
         entries.sortedWith(
@@ -83,7 +86,8 @@ fun BodyWeightGraph(
         showAxisLabels = showAxisLabels,
         showTitle = showTitle,
         showGrid = showGrid,
-        lineColorOverride = lineColor
+        lineColorOverride = lineColor,
+        interactive = interactive
     )
 }
 
