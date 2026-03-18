@@ -116,6 +116,8 @@ fun LiftLogRoot(viewModel: PRViewModel) {
         }
     }
 }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
