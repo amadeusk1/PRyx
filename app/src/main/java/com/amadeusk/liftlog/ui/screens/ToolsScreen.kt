@@ -79,9 +79,14 @@ fun ToolsScreen() {
 fun TdeeCalculator() {
     val scrollState = rememberScrollState()
 
+    // Unit selection (metric or imperial)
+    var useMetric by remember { mutableStateOf(true) }
+
     // User input fields
-    var weightText by remember { mutableStateOf("") } // kg
-    var heightText by remember { mutableStateOf("") } // cm
+    var weightText by remember { mutableStateOf("") } // kg or lb
+    var heightCmText by remember { mutableStateOf("") } // cm (metric)
+    var heightFeetText by remember { mutableStateOf("") } // ft (imperial)
+    var heightInchesText by remember { mutableStateOf("") } // in (imperial)
     var ageText by remember { mutableStateOf("") }
 
     // Sex selection
@@ -89,6 +94,12 @@ fun TdeeCalculator() {
 
     // Activity level selection index (0..4)
     var activityIndex by remember { mutableStateOf(1) }
+
+    // Result / error state
+    var showResult by remember { mutableStateOf(false) }
+    var savedBmr by remember { mutableStateOf<Double?>(null) }
+    var savedTdee by remember { mutableStateOf<Double?>(null) }
+    var errorText by remember { mutableStateOf<String?>(null) }
 
     // Labels shown in the UI
     val activityLabels = listOf(
@@ -102,22 +113,21 @@ fun TdeeCalculator() {
     // Multipliers used for TDEE calculation
     val activityMultipliers = listOf(1.2, 1.375, 1.55, 1.725, 1.9)
 
-    // Convert text inputs to numbers
-    val weight = weightText.toDoubleOrNull()
-    val height = heightText.toDoubleOrNull()
-    val age = ageText.toIntOrNull()
+    // Convert text inputs to numbers (used when user taps Calculate)
+    fun currentWeightKg(): Double? {
+        val rawWeight = weightText.toDoubleOrNull() ?: return null
+        return if (useMetric) rawWeight else rawWeight * 0.45359237
+    }
 
-    // Calculate BMR if all inputs exist
-    val bmr = if (weight != null && height != null && age != null) {
-        if (isMale) {
-            10 * weight + 6.25 * height - 5 * age + 5
+    fun currentHeightCm(): Double? {
+        return if (useMetric) {
+            heightCmText.toDoubleOrNull()
         } else {
-            10 * weight + 6.25 * height - 5 * age - 161
+            val ft = heightFeetText.toDoubleOrNull() ?: return null
+            val inch = heightInchesText.toDoubleOrNull() ?: 0.0
+            ((ft * 12.0) + inch) * 2.54
         }
-    } else null
-
-    // Calculate TDEE using activity multiplier
-    val tdee = bmr?.let { it * activityMultipliers[activityIndex] }
+    }
 
     Column(
         modifier = Modifier
@@ -126,98 +136,189 @@ fun TdeeCalculator() {
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "TDEE (Total Daily Energy Expenditure)",
-            style = MaterialTheme.typography.titleMedium
-        )
-        Text(
-            text = "This estimates how many calories you burn per day based on your stats and activity. " +
-                    "It uses the Mifflin–St Jeor equation.",
-            style = MaterialTheme.typography.bodySmall
-        )
-
-        // Weight input
-        OutlinedTextField(
-            value = weightText,
-            onValueChange = { weightText = it },
-            label = { Text("Body weight (kg)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Height input
-        OutlinedTextField(
-            value = heightText,
-            onValueChange = { heightText = it },
-            label = { Text("Height (cm)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Age input
-        OutlinedTextField(
-            value = ageText,
-            onValueChange = { ageText = it },
-            label = { Text("Age (years)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Sex selection
-        Text("Sex", style = MaterialTheme.typography.labelMedium)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = isMale,
-                    onClick = { isMale = true }
-                )
-                Text("Male")
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(
-                    selected = !isMale,
-                    onClick = { isMale = false }
-                )
-                Text("Female")
-            }
-        }
-
-        // Activity selection
-        Text("Activity level", style = MaterialTheme.typography.labelMedium)
-
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            activityLabels.forEachIndexed { index, label ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = activityIndex == index,
-                        onClick = { activityIndex = index }
-                    )
-                    Text(label)
-                }
-            }
-        }
-
-        Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // Show results if valid
-        if (bmr != null && tdee != null) {
-            Text("Estimated BMR: ${bmr.toInt()} kcal/day")
-            Text("Estimated TDEE: ${tdee.toInt()} kcal/day")
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "Rough guidelines:", style = MaterialTheme.typography.labelMedium)
-            Text("- Mild fat loss: TDEE - 250 to 400 kcal")
-            Text("- Aggressive cut: TDEE - 500 to 700 kcal")
-            Text("- Slow bulk: TDEE + 200 to 300 kcal")
-        } else {
-            // Prompt user to fill fields
+        if (!showResult) {
             Text(
-                text = "Fill in weight, height, and age to calculate your TDEE.",
+                text = "TDEE (Total Daily Energy Expenditure)",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "This estimates how many calories you burn per day based on your stats and activity. " +
+                        "It uses the Mifflin–St Jeor equation. You can enter metric (kg / cm) or imperial (lb / ft + in).",
                 style = MaterialTheme.typography.bodySmall
             )
+
+            // Units toggle
+            Text("Units", style = MaterialTheme.typography.labelMedium)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = useMetric, onClick = { useMetric = true })
+                    Text("Metric (kg / cm)")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = !useMetric, onClick = { useMetric = false })
+                    Text("Imperial (lb / ft + in)")
+                }
+            }
+
+            // Weight input
+            OutlinedTextField(
+                value = weightText,
+                onValueChange = { weightText = it },
+                label = { Text(if (useMetric) "Body weight (kg)" else "Body weight (lb)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Height input (metric: single field in cm, imperial: ft + in)
+            if (useMetric) {
+                OutlinedTextField(
+                    value = heightCmText,
+                    onValueChange = { heightCmText = it },
+                    label = { Text("Height (cm)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                Text("Height", style = MaterialTheme.typography.labelMedium)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = heightFeetText,
+                        onValueChange = { heightFeetText = it },
+                        label = { Text("Feet") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = heightInchesText,
+                        onValueChange = { heightInchesText = it },
+                        label = { Text("Inches") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // Age input
+            OutlinedTextField(
+                value = ageText,
+                onValueChange = { ageText = it },
+                label = { Text("Age (years)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Sex selection
+            Text("Sex", style = MaterialTheme.typography.labelMedium)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = isMale,
+                        onClick = { isMale = true }
+                    )
+                    Text("Male")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = !isMale,
+                        onClick = { isMale = false }
+                    )
+                    Text("Female")
+                }
+            }
+
+            // Activity selection
+            Text("Activity level", style = MaterialTheme.typography.labelMedium)
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                activityLabels.forEachIndexed { index, label ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = activityIndex == index,
+                            onClick = { activityIndex = index }
+                        )
+                        Text(label)
+                    }
+                }
+            }
+
+            if (errorText != null) {
+                Text(
+                    text = errorText!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Button(
+                onClick = {
+                    val w = currentWeightKg()
+                    val h = currentHeightCm()
+                    val a = ageText.toIntOrNull()
+                    if (w != null && h != null && a != null) {
+                        val baseBmr = if (isMale) {
+                            10 * w + 6.25 * h - 5 * a + 5
+                        } else {
+                            10 * w + 6.25 * h - 5 * a - 161
+                        }
+                        val baseTdee = baseBmr * activityMultipliers[activityIndex]
+                        savedBmr = baseBmr
+                        savedTdee = baseTdee
+                        showResult = true
+                        errorText = null
+                    } else {
+                        errorText = "Fill in weight, height, age, and sex to calculate your TDEE."
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Calculate TDEE")
+            }
+        } else {
+            val bmr = savedBmr
+            val tdee = savedTdee
+            if (bmr != null && tdee != null) {
+                Text(
+                    text = "Your estimated daily calories",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text("Estimated BMR: ${bmr.toInt()} kcal/day")
+                Text("Estimated TDEE: ${tdee.toInt()} kcal/day")
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(text = "Rough guidelines:", style = MaterialTheme.typography.labelMedium)
+                Text("- Mild fat loss: TDEE - 250 to 400 kcal")
+                Text("- Aggressive cut: TDEE - 500 to 700 kcal")
+                Text("- Slow bulk: TDEE + 200 to 300 kcal")
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        showResult = false
+                        weightText = ""
+                        heightCmText = ""
+                        heightFeetText = ""
+                        heightInchesText = ""
+                        ageText = ""
+                        errorText = null
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("New calculation")
+                }
+            } else {
+                // Fallback: reset to input mode if results were somehow cleared
+                showResult = false
+            }
         }
     }
 }
@@ -230,15 +331,12 @@ fun OneRmCalculator() {
     // User input fields
     var weightText by remember { mutableStateOf("") }
     var repsText by remember { mutableStateOf("") }
+    var useKg by remember { mutableStateOf(true) }
 
-    // Convert text inputs to numbers
-    val weight = weightText.toDoubleOrNull()
-    val reps = repsText.toIntOrNull()
-
-    // Epley formula: 1RM = w * (1 + reps / 30)
-    val oneRm = if (weight != null && reps != null && reps in 1..12) {
-        weight * (1.0 + reps.toDouble() / 30.0)
-    } else null
+    // Result + error state
+    var showResult by remember { mutableStateOf(false) }
+    var savedOneRm by remember { mutableStateOf<Double?>(null) }
+    var errorText by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -247,58 +345,119 @@ fun OneRmCalculator() {
             .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "1RM (One-Rep Max) Estimator",
-            style = MaterialTheme.typography.titleMedium
-        )
-        Text(
-            text = "Enter the weight you lifted and how many clean reps you did. " +
-                    "This uses the Epley formula, which works best for sets of 1–12 reps.",
-            style = MaterialTheme.typography.bodySmall
-        )
-
-        // Weight input
-        OutlinedTextField(
-            value = weightText,
-            onValueChange = { weightText = it },
-            label = { Text("Weight used (same unit as app)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Reps input
-        OutlinedTextField(
-            value = repsText,
-            onValueChange = { repsText = it },
-            label = { Text("Reps (1–12)") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-        // Show results if valid
-        if (oneRm != null) {
-            Text("Estimated 1RM: ${String.format("%.1f", oneRm)}")
-
-            Spacer(modifier = Modifier.height(8.dp))
-
+        if (!showResult) {
             Text(
-                text = "Suggested training percentages:",
-                style = MaterialTheme.typography.labelMedium
+                text = "1RM (One-Rep Max) Estimator",
+                style = MaterialTheme.typography.titleMedium
             )
-
-            // Show a few useful % ranges
-            val percents = listOf(0.6, 0.7, 0.8, 0.9)
-            percents.forEach { p ->
-                val w = oneRm * p
-                Text(text = "${(p * 100).toInt()}% ≈ ${String.format("%.1f", w)}")
-            }
-        } else {
             Text(
-                text = "Enter a valid weight and reps (1–12) to estimate your 1RM.",
+                text = "Enter the weight you lifted and how many clean reps you did. " +
+                        "This uses the Epley formula, which works best for sets of 1–12 reps. " +
+                        "You can enter kg or lb – results will be in the same unit.",
                 style = MaterialTheme.typography.bodySmall
             )
+
+            // Units toggle
+            Text("Units", style = MaterialTheme.typography.labelMedium)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = useKg, onClick = { useKg = true })
+                    Text("kg")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = !useKg, onClick = { useKg = false })
+                    Text("lb")
+                }
+            }
+
+            // Weight input
+            OutlinedTextField(
+                value = weightText,
+                onValueChange = { weightText = it },
+                label = { Text(if (useKg) "Weight used (kg)" else "Weight used (lb)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Reps input
+            OutlinedTextField(
+                value = repsText,
+                onValueChange = { repsText = it },
+                label = { Text("Reps (1–12)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (errorText != null) {
+                Text(
+                    text = errorText!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Button(
+                onClick = {
+                    val weight = weightText.toDoubleOrNull()
+                    val reps = repsText.toIntOrNull()
+                    val oneRm = if (weight != null && reps != null && reps in 1..12) {
+                        weight * (1.0 + reps.toDouble() / 30.0)
+                    } else null
+
+                    if (oneRm != null) {
+                        savedOneRm = oneRm
+                        showResult = true
+                        errorText = null
+                    } else {
+                        errorText = "Enter a valid weight and reps (1–12) to estimate your 1RM."
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Estimate 1RM")
+            }
+        } else {
+            val oneRm = savedOneRm
+            if (oneRm != null) {
+                Text(
+                    text = "Estimated 1RM",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text("1RM ≈ ${String.format("%.1f", oneRm)} ${if (useKg) "kg" else "lb"}")
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Suggested training percentages:",
+                    style = MaterialTheme.typography.labelMedium
+                )
+
+                val percents = listOf(0.6, 0.7, 0.8, 0.9)
+                percents.forEach { p ->
+                    val w = oneRm * p
+                    Text(
+                        text = "${(p * 100).toInt()}% ≈ ${String.format("%.1f", w)} ${if (useKg) "kg" else "lb"}"
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        showResult = false
+                        weightText = ""
+                        repsText = ""
+                        errorText = null
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("New calculation")
+                }
+            } else {
+                showResult = false
+            }
         }
     }
 }
@@ -348,7 +507,7 @@ fun ProteinNeedsCalculator() {
         Text(text = "Protein Needs", style = MaterialTheme.typography.titleMedium)
         Text(
             text = "General evidence-based ranges for lifters are around 1.6–2.2 g/kg of bodyweight per day, " +
-                    "higher when cutting, slightly lower when bulking.",
+                    "higher when cutting, slightly lower when bulking. You can enter weight in kg or lb.",
             style = MaterialTheme.typography.bodySmall
         )
 
@@ -529,6 +688,11 @@ fun BodyFatCalculator() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Body Fat Percentage", style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = "These are rough estimates using BMI and the US Navy tape method. " +
+                    "You can use metric (kg / cm) or imperial (lb / in). For imperial, enter heights in total inches (e.g. 5'10\" = 70 in).",
+            style = MaterialTheme.typography.bodySmall
+        )
 
         // Unit toggle
         Text("Units", style = MaterialTheme.typography.labelMedium)

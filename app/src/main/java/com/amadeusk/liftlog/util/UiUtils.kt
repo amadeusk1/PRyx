@@ -235,13 +235,23 @@ fun formatWeight(weightKg: Double, useKg: Boolean): String {
 enum class StrengthTrend { UP, DOWN, STABLE }
 
 data class ThisWeekSnapshot(
+    val thisWeekStart: LocalDate,
+    val thisWeekEnd: LocalDate,
+    val weekRangeLabel: String,      // e.g. "Mar 4 – Mar 10"
+    val sessionsThisWeek: Int,       // distinct days with at least one PR
     val exercisesTracked: Int,
-    val avgIntensity: String,       // "Low" / "Medium" / "High"
-    val volumeVsLastWeekPercent: Double?,  // null if no last week volume
-    val bwChangeKg: Double?,       // null if not enough BW data
+    val totalSetsThisWeek: Int,
+    val volumeThisWeekKg: Double,
+    val volumeVsLastWeekPercent: Double?,
+    val avgReps: Double,
+    val avgIntensity: String,
+    val bwChangeKg: Double?,
     val strengthTrend: StrengthTrend,
-    val fatigueEstimate: String   // "Low" / "Moderate" / "High"
+    val fatigueEstimate: String
 )
+
+private val weekRangeFormatter = DateTimeFormatter.ofPattern("MMM d", java.util.Locale.getDefault())
+private fun formatWeekRange(start: LocalDate, end: LocalDate) = "${start.format(weekRangeFormatter)} \u2013 ${end.format(weekRangeFormatter)}"
 
 fun computeThisWeekSnapshot(
     prs: List<PR>,
@@ -249,6 +259,7 @@ fun computeThisWeekSnapshot(
     useKg: Boolean
 ): ThisWeekSnapshot {
     val today = LocalDate.now()
+    // Rolling 7-day windows: "this week" = last 7 days incl. today, "last week" = 7 days before that
     val thisWeekStart = today.minusDays(6)
     val lastWeekStart = today.minusDays(13)
     val lastWeekEnd = today.minusDays(7)
@@ -256,41 +267,67 @@ fun computeThisWeekSnapshot(
     val prsThisWeek = prs.filter { parsePrDateOrMin(it.date).let { d -> !d.isBefore(thisWeekStart) && !d.isAfter(today) } }
     val prsLastWeek = prs.filter { parsePrDateOrMin(it.date).let { d -> !d.isBefore(lastWeekStart) && !d.isAfter(lastWeekEnd) } }
 
+    val sessionsThisWeek = prsThisWeek.map { parsePrDateOrMin(it.date) }.distinct().size
     val exercisesTracked = prsThisWeek.map { it.exercise }.distinct().size
-
-    val avgReps = if (prsThisWeek.isEmpty()) 10.0 else prsThisWeek.map { it.reps.toDouble() }.average()
-    val avgIntensity = when {
-        avgReps <= 5 -> "High"
-        avgReps <= 8 -> "Medium"
-        else -> "Low"
-    }
+    val totalSetsThisWeek = prsThisWeek.size
 
     val volumeThis = prsThisWeek.sumOf { it.weight * it.reps }
     val volumeLast = prsLastWeek.sumOf { it.weight * it.reps }
     val volumeVsLastWeekPercent = if (volumeLast > 0) ((volumeThis - volumeLast) / volumeLast) * 100 else null
 
-    val bwSorted = bodyWeights.sortedBy { parsePrDateOrMin(it.date) }
-    val bwRecent = bwSorted.lastOrNull()?.takeIf { !parsePrDateOrMin(it.date).isBefore(thisWeekStart) }?.weight
-    val bwOld = bwSorted.filter { parsePrDateOrMin(it.date).isBefore(thisWeekStart) }.lastOrNull()?.weight
-    val bwChangeKg = if (bwRecent != null && bwOld != null) bwRecent - bwOld else null
+    val avgReps = if (prsThisWeek.isEmpty()) 0.0 else prsThisWeek.map { it.reps.toDouble() }.average()
+    val avgIntensity = when {
+        prsThisWeek.isEmpty() -> "—"
+        avgReps <= 5 -> "High"
+        avgReps <= 8 -> "Medium"
+        else -> "Low"
+    }
 
+    // BW: compare average this week vs average last week when we have entries in both windows; else recent vs baseline
+    val bwThisWeekEntries = bodyWeights.filter { parsePrDateOrMin(it.date).let { d -> !d.isBefore(thisWeekStart) && !d.isAfter(today) } }
+    val bwLastWeekEntries = bodyWeights.filter { parsePrDateOrMin(it.date).let { d -> !d.isBefore(lastWeekStart) && !d.isAfter(lastWeekEnd) } }
+    val bwChangeKg = when {
+        bwThisWeekEntries.isNotEmpty() && bwLastWeekEntries.isNotEmpty() -> {
+            val avgThis = bwThisWeekEntries.map { it.weight }.average()
+            val avgLast = bwLastWeekEntries.map { it.weight }.average()
+            avgThis - avgLast
+        }
+        else -> {
+            val bwSorted = bodyWeights.sortedBy { parsePrDateOrMin(it.date) }
+            val recent = bwSorted.lastOrNull()?.takeIf { !parsePrDateOrMin(it.date).isBefore(thisWeekStart) }?.weight
+            val baseline = bwSorted.filter { parsePrDateOrMin(it.date).isBefore(thisWeekStart) }.lastOrNull()?.weight
+            if (recent != null && baseline != null) recent - baseline else null
+        }
+    }
+
+    // Strength trend: require meaningful last-week volume to avoid noise; use 5% threshold for clearer signal
     val strengthTrend = when {
-        volumeLast <= 0 -> StrengthTrend.STABLE
-        volumeThis > volumeLast * 1.02 -> StrengthTrend.UP
-        volumeThis < volumeLast * 0.98 -> StrengthTrend.DOWN
+        volumeLast <= 0 || prsLastWeek.isEmpty() -> StrengthTrend.STABLE
+        volumeThis > volumeLast * 1.05 -> StrengthTrend.UP
+        volumeThis < volumeLast * 0.95 -> StrengthTrend.DOWN
         else -> StrengthTrend.STABLE
     }
 
+    // Fatigue: factor in volume delta, intensity, and set count (more sets = more stress)
     val fatigueEstimate = when {
-        volumeVsLastWeekPercent != null && volumeVsLastWeekPercent > 15 && avgIntensity == "High" -> "High"
-        volumeVsLastWeekPercent != null && (volumeVsLastWeekPercent > 8 || avgIntensity == "High") -> "Moderate"
+        prsThisWeek.isEmpty() -> "—"
+        totalSetsThisWeek >= 15 && avgReps <= 6 -> "High"
+        volumeVsLastWeekPercent != null && volumeVsLastWeekPercent > 15 && avgReps <= 6 -> "High"
+        totalSetsThisWeek >= 10 || (volumeVsLastWeekPercent != null && volumeVsLastWeekPercent > 8) || avgReps <= 6 -> "Moderate"
         else -> "Low"
     }
 
     return ThisWeekSnapshot(
+        thisWeekStart = thisWeekStart,
+        thisWeekEnd = today,
+        weekRangeLabel = formatWeekRange(thisWeekStart, today),
+        sessionsThisWeek = sessionsThisWeek,
         exercisesTracked = exercisesTracked,
-        avgIntensity = avgIntensity,
+        totalSetsThisWeek = totalSetsThisWeek,
+        volumeThisWeekKg = volumeThis,
         volumeVsLastWeekPercent = volumeVsLastWeekPercent,
+        avgReps = avgReps,
+        avgIntensity = avgIntensity,
         bwChangeKg = bwChangeKg,
         strengthTrend = strengthTrend,
         fatigueEstimate = fatigueEstimate

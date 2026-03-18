@@ -33,8 +33,8 @@ android {
         applicationId = "com.amadeusk.liftlog"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "2.3"
+        versionCode = 16
+        versionName = "2.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -72,4 +72,6 @@ dependencies {
 
     // Jetpack Compose Navigation
     implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // (TensorFlow Lite dependency removed with Future You feature)
 }
