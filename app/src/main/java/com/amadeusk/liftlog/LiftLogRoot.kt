@@ -116,8 +116,6 @@ fun LiftLogRoot(viewModel: PRViewModel) {
         }
     }
 }
-}
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -957,115 +955,116 @@ private fun DashboardScreen(
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                val liftColors = listOf(
-                    MaterialTheme.colorScheme.primary,
-                    MaterialTheme.colorScheme.tertiary,
-                    MaterialTheme.colorScheme.secondary
-                )
-                for ((index, lift) in coreLifts.withIndex()) {
-                    val liftPrs = remember(prs, lift) {
-                        prs
-                            .filter { it.exercise == lift }
-                            .sortedByDescending { parsePrDateOrMin(it.date) }
-                            .take(5)
-                            .sortedBy { parsePrDateOrMin(it.date) }
-                    }
+                    val liftColors = listOf(
+                        MaterialTheme.colorScheme.primary,
+                        MaterialTheme.colorScheme.tertiary,
+                        MaterialTheme.colorScheme.secondary
+                    )
+                    for ((index, lift) in coreLifts.withIndex()) {
+                        val liftPrs = remember(prs, lift) {
+                            prs
+                                .filter { it.exercise == lift }
+                                .sortedByDescending { parsePrDateOrMin(it.date) }
+                                .take(5)
+                                .sortedBy { parsePrDateOrMin(it.date) }
+                        }
 
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onOpenExercise(lift) }
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onOpenExercise(lift) }
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .widthIn(min = 0.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Surface(
-                                    modifier = Modifier.size(4.dp, 24.dp),
-                                    shape = RoundedCornerShape(2.dp),
-                                    color = liftColors.getOrNull(index) ?: MaterialTheme.colorScheme.primary
-                                ) {}
-                                Text(
-                                    text = lift,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f)
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .widthIn(min = 0.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Surface(
+                                        modifier = Modifier.size(4.dp, 24.dp),
+                                        shape = RoundedCornerShape(2.dp),
+                                        color = liftColors.getOrNull(index)
+                                            ?: MaterialTheme.colorScheme.primary
+                                    ) {}
+                                    Text(
+                                        text = lift,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+
+                                val latest = liftPrs.lastOrNull()
+                                if (latest != null) {
+                                    Text(
+                                        text = formatWeight(latest.weight, useKg),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
                             }
 
-                            val latest = liftPrs.lastOrNull()
-                            if (latest != null) {
+                            if (liftPrs.isNotEmpty()) {
+                                ExerciseGraph(
+                                    prs = liftPrs,
+                                    selectedPr = null,
+                                    onPointSelected = {},
+                                    useKg = useKg,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(152.dp)
+                                        .padding(top = 8.dp),
+                                    showAxisLabels = false,
+                                    showTitle = false,
+                                    showGrid = false,
+                                    lineColor = liftColors.getOrNull(index),
+                                    interactive = false
+                                )
+                            } else {
                                 Text(
-                                    text = formatWeight(latest.weight, useKg),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    modifier = Modifier.padding(start = 8.dp)
+                                    text = "No PRs logged yet. Tap to add and view more.",
+                                    style = MaterialTheme.typography.bodySmall
                                 )
                             }
                         }
 
-                        if (liftPrs.isNotEmpty()) {
-                            ExerciseGraph(
-                                prs = liftPrs,
-                                selectedPr = null,
-                                onPointSelected = {},
-                                useKg = useKg,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(152.dp)
-                                    .padding(top = 8.dp),
-                                showAxisLabels = false,
-                                showTitle = false,
-                                showGrid = false,
-                                lineColor = liftColors.getOrNull(index),
-                                interactive = false
-                            )
-                        } else {
-                            Text(
-                                text = "No PRs logged yet. Tap to add and view more.",
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                        if (index != coreLifts.lastIndex) {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         }
                     }
 
-                    if (index != coreLifts.lastIndex) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenLogDifferentExercise() }
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Log different exercise",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenLogDifferentExercise() }
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Log different exercise",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
                 }
             }
-        }
         }
 
         // -------- BODYWEIGHT SECTION --------
         AnimatedDashboardSection(3) {
             Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenBodyweight() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenBodyweight() },
                 shape = RoundedCornerShape(24.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 colors = CardDefaults.cardColors(
@@ -1099,27 +1098,28 @@ private fun DashboardScreen(
                         }
                     }
 
-                if (bwPreview.isNotEmpty()) {
-                    BodyWeightGraph(
-                        entries = bwPreview,
-                        selectedEntry = null,
-                        onPointSelected = {},
-                        useKg = useKg,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(172.dp)
-                            .padding(top = 8.dp),
-                        showAxisLabels = false,
-                        showTitle = false,
-                        showGrid = false,
-                        lineColor = MaterialTheme.colorScheme.tertiary,
-                        interactive = false
-                    )
-                } else {
-                    Text(
-                        text = "No bodyweight entries yet. Tap to add your first entry.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    if (bwPreview.isNotEmpty()) {
+                        BodyWeightGraph(
+                            entries = bwPreview,
+                            selectedEntry = null,
+                            onPointSelected = {},
+                            useKg = useKg,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(172.dp)
+                                .padding(top = 8.dp),
+                            showAxisLabels = false,
+                            showTitle = false,
+                            showGrid = false,
+                            lineColor = MaterialTheme.colorScheme.tertiary,
+                            interactive = false
+                        )
+                    } else {
+                        Text(
+                            text = "No bodyweight entries yet. Tap to add your first entry.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }
@@ -1169,220 +1169,234 @@ private fun DashboardScreen(
             computeThisWeekSnapshot(prs, bodyWeights, useKg)
         }
         AnimatedDashboardSection(5) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "This week",
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    text = "${weekSnapshot.weekRangeLabel} \u00b7 vs previous 7 days",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
-            ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Sessions", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            text = "${weekSnapshot.sessionsThisWeek} day${if (weekSnapshot.sessionsThisWeek == 1) "" else "s"}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Sets logged", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            text = "${weekSnapshot.totalSetsThisWeek}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Exercises", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            text = "${weekSnapshot.exercisesTracked}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Volume", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            text = buildString {
-                                val vol = weekSnapshot.volumeThisWeekKg
-                                append(if (vol >= 1000) "%.1fk".format(vol / 1000) else "%.0f".format(vol))
-                                append(" kg")
-                                weekSnapshot.volumeVsLastWeekPercent?.let { pct ->
-                                    append(" ")
-                                    append(if (pct >= 0) "+" else "")
-                                    append("%.0f%%".format(pct))
-                                    append(" vs last")
-                                }
-                            },
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Avg reps \u00b7 intensity", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            text = if (weekSnapshot.totalSetsThisWeek > 0)
-                                "~${"%.0f".format(weekSnapshot.avgReps)} \u00b7 ${weekSnapshot.avgIntensity}"
-                            else "\u2014",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("BW change", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            text = weekSnapshot.bwChangeKg?.let { delta ->
-                                val sign = if (delta >= 0) "+" else "\u2013"
-                                val abs = kotlin.math.abs(delta)
-                                val displayVal = if (useKg) abs else abs * KG_TO_LB
-                                "$sign${"%.1f".format(displayVal)} ${if (useKg) "kg" else "lb"}"
-                            } ?: "\u2014",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Strength trend", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            text = when (weekSnapshot.strengthTrend) {
-                                StrengthTrend.UP -> "\u2191 Up"
-                                StrengthTrend.DOWN -> "\u2193 Down"
-                                StrengthTrend.STABLE -> "\u2192 Stable"
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            color = when (weekSnapshot.strengthTrend) {
-                                StrengthTrend.UP -> MaterialTheme.colorScheme.primary
-                                StrengthTrend.DOWN -> MaterialTheme.colorScheme.error
-                                StrengthTrend.STABLE -> MaterialTheme.colorScheme.onSurface
-                            }
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Fatigue estimate", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            text = weekSnapshot.fatigueEstimate,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-            }
-        }
-
-        // Other feature previews
-        AnimatedDashboardSection(6) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "More from PRyx",
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenTools() },
-                    shape = RoundedCornerShape(24.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    Text(
+                        text = "This week",
+                        style = MaterialTheme.typography.titleLarge
                     )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Build,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
+                    Text(
+                        text = "${weekSnapshot.weekRangeLabel} \u00b7 vs previous 7 days",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Tools & Calculators", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                text = "TDEE, 1RM, protein needs, and body fat calculators.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Sessions", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = "${weekSnapshot.sessionsThisWeek} day${if (weekSnapshot.sessionsThisWeek == 1) "" else "s"}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Sets logged", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = "${weekSnapshot.totalSetsThisWeek}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Exercises", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = "${weekSnapshot.exercisesTracked}",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Volume", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = buildString {
+                                        val vol = weekSnapshot.volumeThisWeekKg
+                                        append(
+                                            if (vol >= 1000) "%.1fk".format(vol / 1000) else "%.0f".format(
+                                                vol
+                                            )
+                                        )
+                                        append(" kg")
+                                        weekSnapshot.volumeVsLastWeekPercent?.let { pct ->
+                                            append(" ")
+                                            append(if (pct >= 0) "+" else "")
+                                            append("%.0f%%".format(pct))
+                                            append(" vs last")
+                                        }
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "Avg reps \u00b7 intensity",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = if (weekSnapshot.totalSetsThisWeek > 0)
+                                        "~${"%.0f".format(weekSnapshot.avgReps)} \u00b7 ${weekSnapshot.avgIntensity}"
+                                    else "\u2014",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("BW change", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = weekSnapshot.bwChangeKg?.let { delta ->
+                                        val sign = if (delta >= 0) "+" else "\u2013"
+                                        val abs = kotlin.math.abs(delta)
+                                        val displayVal = if (useKg) abs else abs * KG_TO_LB
+                                        "$sign${"%.1f".format(displayVal)} ${if (useKg) "kg" else "lb"}"
+                                    } ?: "\u2014",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Strength trend", style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = when (weekSnapshot.strengthTrend) {
+                                        StrengthTrend.UP -> "\u2191 Up"
+                                        StrengthTrend.DOWN -> "\u2193 Down"
+                                        StrengthTrend.STABLE -> "\u2192 Stable"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = when (weekSnapshot.strengthTrend) {
+                                        StrengthTrend.UP -> MaterialTheme.colorScheme.primary
+                                        StrengthTrend.DOWN -> MaterialTheme.colorScheme.error
+                                        StrengthTrend.STABLE -> MaterialTheme.colorScheme.onSurface
+                                    }
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "Fatigue estimate",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = weekSnapshot.fatigueEstimate,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
                         }
                     }
                 }
+            }
 
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenLeaderboard() },
-                    shape = RoundedCornerShape(24.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
+            // Other feature previews
+            AnimatedDashboardSection(6) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
+                    Text(
+                        text = "More from PRyx",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Leaderboard,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
+                            .clickable { onOpenTools() },
+                        shape = RoundedCornerShape(24.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Leaderboard", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                text = "See how your PRs stack up.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Build,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
                             )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Tools & Calculators",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = "TDEE, 1RM, protein needs, and body fat calculators.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenLeaderboard() },
+                        shape = RoundedCornerShape(24.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Leaderboard,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Leaderboard", style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    text = "See how your PRs stack up.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
