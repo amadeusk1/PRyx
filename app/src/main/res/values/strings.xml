@@ -1,3 +1,69 @@
 <resources>
     <string name="app_name">PRyx</string>
+    <string name="reminder_channel_name">Daily reminders</string>
+    <string name="reminder_channel_desc">Morning bodyweight and evening training reminders</string>
+    <string name="reminder_bw_title">Log bodyweight</string>
+    <string name="reminder_bw_text">Tap to open the app and log your weight.</string>
+    <string name="reminder_lift_title">Log a lift</string>
+    <string name="reminder_lift_text">Tap to record a PR or training.</string>
+    <string-array name="reminder_bw_aggressive_titles">
+        <item>Hey Fat***, hit the scale</item>
+        <item>Wake up dumba***</item>
+        <item>Move it lazy***</item>
+        <item>Listen weak***, weigh in</item>
+        <item>Scale time soft***</item>
+        <item>Jacka***, get on the scale</item>
+        <item>Cupcake, numbers now</item>
+        <item>Hey numb***, log weight</item>
+        <item>Buttercup, stop skipping</item>
+        <item>Champ, the scale is waiting</item>
+        <item>Sunshine, punch in weight</item>
+        <item>Princess, bodyweight check</item>
+    </string-array>
+    <string-array name="reminder_bw_aggressive_texts">
+        <item>Hey Fat***, step on the scale already.</item>
+        <item>dumba***, your weight is not going to log itself.</item>
+        <item>lazy***, open the app and stop ghosting the scale.</item>
+        <item>weak***, bodyweight check in now.</item>
+        <item>soft***, punch in your weight before I lose patience.</item>
+        <item>Move it jacka***, the scale misses you. Log it.</item>
+        <item>cupcake, your weight will not log itself.</item>
+        <item>numb***, still avoiding the scale? Log your bodyweight.</item>
+        <item>buttercup, open PRyx and punch in your weight.</item>
+        <item>champ, you are not too busy for one number.</item>
+        <item>sunshine, step on the scale and log it.</item>
+        <item>princess, the scale is waiting. Log your bodyweight.</item>
+    </string-array>
+    <string-array name="reminder_lift_aggressive_titles">
+        <item>Get under the bar Fat***</item>
+        <item>Put the phone down dumba***</item>
+        <item>lazy***, log your lift</item>
+        <item>weak***, bar is calling</item>
+        <item>soft***, go train</item>
+        <item>Jacka***, log a lift</item>
+        <item>Cupcake, gym time</item>
+        <item>numb***, stop scrolling</item>
+        <item>Buttercup, under the bar</item>
+        <item>Champ, PRs need you</item>
+        <item>Sunshine, log training</item>
+        <item>Princess, no excuses</item>
+    </string-array>
+    <string-array name="reminder_lift_aggressive_texts">
+        <item>Hey Fat***, get under the bar and log a lift.</item>
+        <item>dumba***, stop scrolling and log your training.</item>
+        <item>lazy***, open the app and record a lift already.</item>
+        <item>weak***, your PRs will not write themselves. Log one.</item>
+        <item>soft***, gym called. It wants a logged lift.</item>
+        <item>Time to work jacka***. Log a lift in PRyx.</item>
+        <item>cupcake, put the phone down and log a lift.</item>
+        <item>numb***, get under the bar and log something.</item>
+        <item>buttercup, open PRyx and punch in a lift.</item>
+        <item>champ, you are not done. Log your training.</item>
+        <item>sunshine, stop making excuses and log a lift.</item>
+        <item>princess, the bar is waiting. Log a lift.</item>
+    </string-array>
+    <string name="settings_notifications_section">Notifications</string>
+    <string name="settings_notifications_schedule_hint">7:00 bodyweight · 17:00 lifts (local time)</string>
+    <string name="settings_notifications_enable">Enable notifications</string>
+    <string name="settings_aggressive_mode">Aggressive mode</string>
 </resources>

@@ -1,6 +1,12 @@
 package com.amadeusk.liftlog
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 // Compose layouts + lists
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -36,6 +42,7 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -47,7 +54,13 @@ import com.amadeusk.liftlog.data.saveBodyWeightsToFile
 import com.amadeusk.liftlog.data.loadUseKg
 import com.amadeusk.liftlog.data.saveUseKg
 import com.amadeusk.liftlog.data.loadDarkTheme
+import com.amadeusk.liftlog.data.loadAggressiveRemindersEnabled
+import com.amadeusk.liftlog.data.loadReminderEnabled
+import com.amadeusk.liftlog.data.saveAggressiveRemindersEnabled
 import com.amadeusk.liftlog.data.saveDarkTheme
+import com.amadeusk.liftlog.data.saveReminderEnabled
+import com.amadeusk.liftlog.R
+import com.amadeusk.liftlog.reminders.DailyReminderScheduler
 import com.amadeusk.liftlog.ui.charts.BodyWeightGraph
 import com.amadeusk.liftlog.ui.charts.ExerciseGraph
 import com.amadeusk.liftlog.ui.components.BodyWeightDialog
@@ -173,6 +186,20 @@ private fun LiftLogRootContent(
 
     // Settings dialog flag
     var showSettingsDialog by remember { mutableStateOf(false) }
+
+    var remindersEnabled by remember(context) { mutableStateOf(loadReminderEnabled(context)) }
+
+    var aggressiveRemindersEnabled by remember(context) {
+        mutableStateOf(loadAggressiveRemindersEnabled(context))
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) {
+        if (remindersEnabled) {
+            DailyReminderScheduler.scheduleAllIfEnabled(context.applicationContext)
+        }
+    }
 
     // Which top-level page we are currently showing
     var topPage by remember { mutableStateOf(TopPage.DASHBOARD) }
@@ -617,7 +644,7 @@ private fun LiftLogRootContent(
             confirmButton = {
                 TextButton(onClick = { showSettingsDialog = false }) { Text("Close") }
             },
-            title = { Text("Units") },
+            title = { Text("Settings") },
             text = {
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -647,6 +674,67 @@ private fun LiftLogRootContent(
                         Switch(
                             checked = useDarkTheme,
                             onCheckedChange = { onDarkThemeChange(it) }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.settings_notifications_section),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_notifications_schedule_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.settings_notifications_enable),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = remindersEnabled,
+                            onCheckedChange = { enabled ->
+                                remindersEnabled = enabled
+                                saveReminderEnabled(context, enabled)
+                                if (enabled) {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        when (
+                                            ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.POST_NOTIFICATIONS
+                                            )
+                                        ) {
+                                            PackageManager.PERMISSION_GRANTED ->
+                                                DailyReminderScheduler.scheduleAllIfEnabled(context.applicationContext)
+                                            else -> notificationPermissionLauncher.launch(
+                                                Manifest.permission.POST_NOTIFICATIONS
+                                            )
+                                        }
+                                    } else {
+                                        DailyReminderScheduler.scheduleAllIfEnabled(context.applicationContext)
+                                    }
+                                } else {
+                                    DailyReminderScheduler.cancelAll(context.applicationContext)
+                                }
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = stringResource(R.string.settings_aggressive_mode),
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            enabled = remindersEnabled,
+                            checked = aggressiveRemindersEnabled && remindersEnabled,
+                            onCheckedChange = { enabled ->
+                                aggressiveRemindersEnabled = enabled
+                                saveAggressiveRemindersEnabled(context, enabled)
+                            }
                         )
                     }
                 }
