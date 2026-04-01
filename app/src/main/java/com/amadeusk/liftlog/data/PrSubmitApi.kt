@@ -9,7 +9,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
 
-private const val BASE_URL = "https://www.amadeusk.dev/"
+private const val BASE_URL = "https://www.amadeusk.dev/pryx/"
 
 interface PrSubmitApiService {
     @POST("pr_submit.php")
