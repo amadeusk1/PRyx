@@ -29,7 +29,7 @@ fun saveDarkTheme(context: Context, darkTheme: Boolean) {
     prefs.edit() { putBoolean(KEY_DARK_THEME, darkTheme) }
 }
 
-fun loadReminderEnabled(context: Context, default: Boolean = true): Boolean {
+fun loadReminderEnabled(context: Context, default: Boolean = false): Boolean {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     return prefs.getBoolean(KEY_REMINDERS_ENABLED, default)
 }

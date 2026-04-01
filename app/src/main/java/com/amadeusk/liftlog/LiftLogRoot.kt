@@ -683,11 +683,6 @@ private fun LiftLogRootContent(
                         text = stringResource(R.string.settings_notifications_section),
                         style = MaterialTheme.typography.labelMedium
                     )
-                    Text(
-                        text = stringResource(R.string.settings_notifications_schedule_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
