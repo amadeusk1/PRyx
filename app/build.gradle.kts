@@ -33,8 +33,8 @@ android {
         applicationId = "com.amadeusk.liftlog"
         minSdk = 26
         targetSdk = 36
-        versionCode = 17
-        versionName = "2.7"
+        versionCode = 18
+        versionName = "3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
