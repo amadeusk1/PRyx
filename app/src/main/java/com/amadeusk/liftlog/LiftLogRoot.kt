@@ -55,7 +55,9 @@ import com.amadeusk.liftlog.data.loadUseKg
 import com.amadeusk.liftlog.data.saveUseKg
 import com.amadeusk.liftlog.data.loadDarkTheme
 import com.amadeusk.liftlog.data.loadAggressiveRemindersEnabled
+import com.amadeusk.liftlog.data.loadAggressiveAgeConfirmed
 import com.amadeusk.liftlog.data.loadReminderEnabled
+import com.amadeusk.liftlog.data.saveAggressiveAgeConfirmed
 import com.amadeusk.liftlog.data.saveAggressiveRemindersEnabled
 import com.amadeusk.liftlog.data.saveDarkTheme
 import com.amadeusk.liftlog.data.saveReminderEnabled
@@ -192,6 +194,10 @@ private fun LiftLogRootContent(
     var aggressiveRemindersEnabled by remember(context) {
         mutableStateOf(loadAggressiveRemindersEnabled(context))
     }
+    var aggressiveAgeConfirmed by remember(context) {
+        mutableStateOf(loadAggressiveAgeConfirmed(context))
+    }
+    var showAggressiveAgeDialog by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -471,7 +477,7 @@ private fun LiftLogRootContent(
                             }
                         }
 
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     }
 
                     // Global empty state (no PRs at all)
@@ -592,7 +598,7 @@ private fun LiftLogRootContent(
                             }
                         }
 
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
                         // History list in this range (newest first)
                         val history = bwForRange.sortedByDescending { parsePrDateOrMin(it.date) }
@@ -727,13 +733,46 @@ private fun LiftLogRootContent(
                             enabled = remindersEnabled,
                             checked = aggressiveRemindersEnabled && remindersEnabled,
                             onCheckedChange = { enabled ->
-                                aggressiveRemindersEnabled = enabled
-                                saveAggressiveRemindersEnabled(context, enabled)
+                                if (enabled) {
+                                    if (aggressiveAgeConfirmed) {
+                                        aggressiveRemindersEnabled = true
+                                        saveAggressiveRemindersEnabled(context, true)
+                                    } else {
+                                        showAggressiveAgeDialog = true
+                                    }
+                                } else {
+                                    aggressiveRemindersEnabled = false
+                                    saveAggressiveRemindersEnabled(context, false)
+                                }
                             }
                         )
                     }
                 }
             }
+        )
+    }
+
+    if (showAggressiveAgeDialog) {
+        AlertDialog(
+            onDismissRequest = { showAggressiveAgeDialog = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        aggressiveAgeConfirmed = true
+                        saveAggressiveAgeConfirmed(context, true)
+                        aggressiveRemindersEnabled = true
+                        saveAggressiveRemindersEnabled(context, true)
+                        showAggressiveAgeDialog = false
+                    }
+                ) { Text(stringResource(R.string.settings_aggressive_age_confirm_button)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAggressiveAgeDialog = false }) {
+                    Text(stringResource(R.string.settings_aggressive_age_cancel_button))
+                }
+            },
+            title = { Text(stringResource(R.string.settings_aggressive_age_title)) },
+            text = { Text(stringResource(R.string.settings_aggressive_age_message)) }
         )
     }
 
