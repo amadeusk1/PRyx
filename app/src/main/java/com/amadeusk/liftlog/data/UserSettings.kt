@@ -8,6 +8,7 @@ private const val KEY_USE_KG = "useKg"
 private const val KEY_DARK_THEME = "darkTheme"
 private const val KEY_REMINDERS_ENABLED = "remindersEnabled"
 private const val KEY_AGGRESSIVE_REMINDERS = "aggressiveReminders"
+private const val KEY_AGGRESSIVE_AGE_CONFIRMED = "aggressiveAgeConfirmed"
 
 fun loadUseKg(context: Context, default: Boolean = true): Boolean {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -47,5 +48,15 @@ fun loadAggressiveRemindersEnabled(context: Context, default: Boolean = false): 
 fun saveAggressiveRemindersEnabled(context: Context, enabled: Boolean) {
     val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     prefs.edit() { putBoolean(KEY_AGGRESSIVE_REMINDERS, enabled) }
+}
+
+fun loadAggressiveAgeConfirmed(context: Context, default: Boolean = false): Boolean {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    return prefs.getBoolean(KEY_AGGRESSIVE_AGE_CONFIRMED, default)
+}
+
+fun saveAggressiveAgeConfirmed(context: Context, confirmed: Boolean) {
+    val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    prefs.edit() { putBoolean(KEY_AGGRESSIVE_AGE_CONFIRMED, confirmed) }
 }
 
