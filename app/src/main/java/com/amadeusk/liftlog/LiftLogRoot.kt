@@ -79,7 +79,7 @@ import com.amadeusk.liftlog.ui.components.BodyWeightItem
 import com.amadeusk.liftlog.ui.components.ExerciseSelector
 import com.amadeusk.liftlog.ui.components.GraphRangeSelector
 import com.amadeusk.liftlog.ui.components.PRItem
-import com.amadeusk.liftlog.ui.components.CustomExercisesSection
+import com.amadeusk.liftlog.ui.components.CustomExercisesDialog
 import com.amadeusk.liftlog.ui.components.HomeScreenSettingsDialog
 import com.amadeusk.liftlog.ui.components.LiveLeaderboardSubmitDialog
 import com.amadeusk.liftlog.ui.components.PrDialog
@@ -201,6 +201,7 @@ private fun LiftLogRootContent(
     // Settings dialog flag
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showHomeScreenSettings by remember { mutableStateOf(false) }
+    var showCustomExercisesDialog by remember { mutableStateOf(false) }
 
     var dashboardLayout by remember(context) { mutableStateOf(loadDashboardLayout(context)) }
     var homeLiftLayout by remember(context) {
@@ -734,26 +735,17 @@ private fun LiftLogRootContent(
                     Spacer(modifier = Modifier.height(12.dp))
                     HorizontalDivider(modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(12.dp))
-                    Spacer(modifier = Modifier.height(12.dp))
-                    HorizontalDivider(modifier = Modifier.fillMaxWidth())
-                    Spacer(modifier = Modifier.height(12.dp))
-                    CustomExercisesSection(
-                        customExercises = customExercises,
-                        onDeleteExercise = { exercise ->
-                            viewModel.deleteExercise(exercise)
-                            val updatedLayout = homeLiftLayout.filter { it.name != exercise }
-                            if (updatedLayout.size != homeLiftLayout.size) {
-                                homeLiftLayout = updatedLayout
-                                saveHomeLiftLayout(context, updatedLayout)
-                            }
-                            if (selectedExercise == exercise) {
-                                selectedExercise = exercises
-                                    .filter { it != exercise }
-                                    .firstOrNull()
-                                selectedGraphPr = null
-                            }
-                        }
+                    Text(
+                        text = stringResource(R.string.settings_custom_exercises_section),
+                        style = MaterialTheme.typography.labelMedium
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextButton(onClick = {
+                        showSettingsDialog = false
+                        showCustomExercisesDialog = true
+                    }) {
+                        Text(stringResource(R.string.settings_custom_exercises_button))
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                     HorizontalDivider(modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(12.dp))
@@ -821,6 +813,25 @@ private fun LiftLogRootContent(
                     }
                 }
             }
+        )
+    }
+
+    if (showCustomExercisesDialog) {
+        CustomExercisesDialog(
+            customExercises = customExercises,
+            onDeleteExercise = { exercise ->
+                viewModel.deleteExercise(exercise)
+                val updatedLayout = homeLiftLayout.filter { it.name != exercise }
+                if (updatedLayout.size != homeLiftLayout.size) {
+                    homeLiftLayout = updatedLayout
+                    saveHomeLiftLayout(context, updatedLayout)
+                }
+                if (selectedExercise == exercise) {
+                    selectedExercise = exercises.filter { it != exercise }.firstOrNull()
+                    selectedGraphPr = null
+                }
+            },
+            onDismiss = { showCustomExercisesDialog = false }
         )
     }
 
