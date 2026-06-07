@@ -702,7 +702,10 @@ private fun LiftLogRootContent(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text("Home screen", style = MaterialTheme.typography.labelMedium)
                     Spacer(modifier = Modifier.height(4.dp))
-                    TextButton(onClick = { showHomeScreenSettings = true }) {
+                    TextButton(onClick = {
+                        showSettingsDialog = false
+                        showHomeScreenSettings = true
+                    }) {
                         Text("Customize layout and lifts")
                     }
                     Spacer(modifier = Modifier.height(12.dp))
