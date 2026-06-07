@@ -51,8 +51,15 @@ import com.amadeusk.liftlog.data.BodyWeightEntry
 import com.amadeusk.liftlog.data.PR
 import com.amadeusk.liftlog.data.loadBodyWeightsFromFile
 import com.amadeusk.liftlog.data.saveBodyWeightsToFile
+import com.amadeusk.liftlog.data.DashboardSection
+import com.amadeusk.liftlog.data.DashboardSectionItem
+import com.amadeusk.liftlog.data.availableHomeLiftOptions
+import com.amadeusk.liftlog.data.loadDashboardLayout
+import com.amadeusk.liftlog.data.loadHomeLifts
 import com.amadeusk.liftlog.data.loadUseKg
 import com.amadeusk.liftlog.data.saveUseKg
+import com.amadeusk.liftlog.data.saveDashboardLayout
+import com.amadeusk.liftlog.data.saveHomeLifts
 import com.amadeusk.liftlog.data.loadDarkTheme
 import com.amadeusk.liftlog.data.loadAggressiveRemindersEnabled
 import com.amadeusk.liftlog.data.loadAggressiveAgeConfirmed
@@ -70,6 +77,7 @@ import com.amadeusk.liftlog.ui.components.BodyWeightItem
 import com.amadeusk.liftlog.ui.components.ExerciseSelector
 import com.amadeusk.liftlog.ui.components.GraphRangeSelector
 import com.amadeusk.liftlog.ui.components.PRItem
+import com.amadeusk.liftlog.ui.components.HomeScreenSettingsDialog
 import com.amadeusk.liftlog.ui.components.LiveLeaderboardSubmitDialog
 import com.amadeusk.liftlog.ui.components.PrDialog
 import com.amadeusk.liftlog.ui.components.RepRangeSelector
@@ -91,6 +99,7 @@ import com.amadeusk.liftlog.util.filterPrsByRange
 import com.amadeusk.liftlog.util.filterPrsByRepRange
 import com.amadeusk.liftlog.util.formatWeight
 import com.amadeusk.liftlog.util.fromDisplayWeight
+import com.amadeusk.liftlog.util.DailyQuote
 import com.amadeusk.liftlog.util.getDailyQuote
 import com.amadeusk.liftlog.util.parsePrDateOrMin
 import com.amadeusk.liftlog.util.toDisplayWeight
@@ -188,6 +197,10 @@ private fun LiftLogRootContent(
 
     // Settings dialog flag
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showHomeScreenSettings by remember { mutableStateOf(false) }
+
+    var dashboardLayout by remember(context) { mutableStateOf(loadDashboardLayout(context)) }
+    var homeLifts by remember(context) { mutableStateOf(loadHomeLifts(context)) }
 
     var remindersEnabled by remember(context) { mutableStateOf(loadReminderEnabled(context)) }
 
@@ -315,6 +328,8 @@ private fun LiftLogRootContent(
                         prs = uiState.prs,
                         bodyWeights = bodyWeights,
                         useKg = useKg,
+                        dashboardLayout = dashboardLayout,
+                        homeLifts = homeLifts,
                         onOpenExercise = { exercise ->
                             selectedExercise = exercise
                             selectedGraphPr = null
@@ -685,6 +700,14 @@ private fun LiftLogRootContent(
                     Spacer(modifier = Modifier.height(12.dp))
                     HorizontalDivider(modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(12.dp))
+                    Text("Home screen", style = MaterialTheme.typography.labelMedium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    TextButton(onClick = { showHomeScreenSettings = true }) {
+                        Text("Customize layout and lifts")
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = stringResource(R.string.settings_notifications_section),
                         style = MaterialTheme.typography.labelMedium
@@ -749,6 +772,23 @@ private fun LiftLogRootContent(
                     }
                 }
             }
+        )
+    }
+
+    if (showHomeScreenSettings) {
+        HomeScreenSettingsDialog(
+            layout = dashboardLayout,
+            homeLifts = homeLifts,
+            availableLifts = availableHomeLiftOptions(exercises),
+            onLayoutChange = { updated ->
+                dashboardLayout = updated
+                saveDashboardLayout(context, updated)
+            },
+            onHomeLiftsChange = { updated ->
+                homeLifts = updated
+                saveHomeLifts(context, updated)
+            },
+            onDismiss = { showHomeScreenSettings = false }
         )
     }
 
@@ -933,6 +973,8 @@ private fun DashboardScreen(
     prs: List<PR>,
     bodyWeights: List<BodyWeightEntry>,
     useKg: Boolean,
+    dashboardLayout: List<DashboardSectionItem>,
+    homeLifts: List<String>,
     onOpenExercise: (String) -> Unit,
     onOpenBodyweight: () -> Unit,
     onOpenTools: () -> Unit,
@@ -940,11 +982,14 @@ private fun DashboardScreen(
     onOpenLogDifferentExercise: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
-    val coreLifts = listOf("Bench Press", "Squat", "Deadlift")
     val quote = remember { getDailyQuote() }
     val streak = remember(prs, bodyWeights) {
         currentActivityStreak(prs = prs, bodyWeights = bodyWeights)
     }
+    val weekSnapshot = remember(prs, bodyWeights, useKg) {
+        computeThisWeekSnapshot(prs, bodyWeights, useKg)
+    }
+    val enabledSections = dashboardLayout.filter { it.enabled }
 
     Column(
         modifier = Modifier
@@ -954,535 +999,601 @@ private fun DashboardScreen(
             .padding(top = 20.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // -------- DAILY QUOTE --------
-        AnimatedDashboardSection(0) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.FormatQuote,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
+        enabledSections.forEachIndexed { index, item ->
+            AnimatedDashboardSection(index) {
+                when (item.section) {
+                    DashboardSection.DAILY_QUOTE -> DashboardDailyQuoteSection(quote = quote)
+                    DashboardSection.STREAK -> DashboardStreakSection(streak = streak)
+                    DashboardSection.LIFTS -> DashboardLiftsSection(
+                        prs = prs,
+                        homeLifts = homeLifts,
+                        useKg = useKg,
+                        onOpenExercise = onOpenExercise,
+                        onOpenLogDifferentExercise = onOpenLogDifferentExercise
                     )
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .widthIn(min = 0.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "Daily quote",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "\u201C${quote.text}\u201D",
-                            style = MaterialTheme.typography.titleMedium,
-                            lineHeight = MaterialTheme.typography.titleMedium.lineHeight,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = "\u2014 ${quote.author}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.align(Alignment.End)
-                        )
-                    }
+                    DashboardSection.BODYWEIGHT -> DashboardBodyweightSection(
+                        bodyWeights = bodyWeights,
+                        useKg = useKg,
+                        onOpenBodyweight = onOpenBodyweight
+                    )
+                    DashboardSection.TOOLS -> DashboardToolsSection(onOpenTools = onOpenTools)
+                    DashboardSection.THIS_WEEK -> DashboardThisWeekSection(
+                        weekSnapshot = weekSnapshot,
+                        useKg = useKg
+                    )
+                    DashboardSection.LEADERBOARD -> DashboardLeaderboardSection(
+                        onOpenLeaderboard = onOpenLeaderboard
+                    )
                 }
             }
         }
+    }
+}
 
-        // -------- STREAK --------
-        AnimatedDashboardSection(1) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (streak > 0)
-                        MaterialTheme.colorScheme.tertiaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceContainerHigh
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.LocalFireDepartment,
-                        contentDescription = null,
-                        tint = if (streak > 0)
-                            MaterialTheme.colorScheme.onTertiaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(40.dp)
-                    )
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            text = "Daily streak",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (streak > 0) {
-                            Text(
-                                text = "$streak day${if (streak == 1) "" else "s"}",
-                                style = MaterialTheme.typography.headlineSmall
-                            )
-                            Text(
-                                text = "logged in a row",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        } else {
-                            Text(
-                                text = "Log a PR or bodyweight today to start.",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // -------- LIFTS SECTION --------
-        AnimatedDashboardSection(2) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    val liftColors = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.tertiary,
-                        MaterialTheme.colorScheme.secondary
-                    )
-                    for ((index, lift) in coreLifts.withIndex()) {
-                        val liftPrs = remember(prs, lift) {
-                            prs
-                                .filter { it.exercise == lift }
-                                .sortedByDescending { parsePrDateOrMin(it.date) }
-                                .take(5)
-                                .sortedBy { parsePrDateOrMin(it.date) }
-                        }
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onOpenExercise(lift) }
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .widthIn(min = 0.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Surface(
-                                        modifier = Modifier.size(4.dp, 24.dp),
-                                        shape = RoundedCornerShape(2.dp),
-                                        color = liftColors.getOrNull(index)
-                                            ?: MaterialTheme.colorScheme.primary
-                                    ) {}
-                                    Text(
-                                        text = lift,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-
-                                val latest = liftPrs.lastOrNull()
-                                if (latest != null) {
-                                    Text(
-                                        text = formatWeight(latest.weight, useKg),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                }
-                            }
-
-                            if (liftPrs.isNotEmpty()) {
-                                ExerciseGraph(
-                                    prs = liftPrs,
-                                    selectedPr = null,
-                                    onPointSelected = {},
-                                    useKg = useKg,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(152.dp)
-                                        .padding(top = 8.dp),
-                                    showAxisLabels = false,
-                                    showTitle = false,
-                                    showGrid = false,
-                                    lineColor = liftColors.getOrNull(index),
-                                    interactive = false
-                                )
-                            } else {
-                                Text(
-                                    text = "No PRs logged yet. Tap to add and view more.",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-
-                        if (index != coreLifts.lastIndex) {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                        }
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onOpenLogDifferentExercise() }
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Log different exercise",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-        }
-
-        // -------- BODYWEIGHT SECTION --------
-        AnimatedDashboardSection(3) {
-            Card(
+@Composable
+private fun DashboardDailyQuoteSection(quote: DailyQuote) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.Top
+        ) {
+            Icon(
+                imageVector = Icons.Filled.FormatQuote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onOpenBodyweight() },
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                )
+                    .weight(1f)
+                    .widthIn(min = 0.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    val bwPreview = remember(bodyWeights) {
-                        bodyWeights
+                Text(
+                    text = "Daily quote",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "\u201C${quote.text}\u201D",
+                    style = MaterialTheme.typography.titleMedium,
+                    lineHeight = MaterialTheme.typography.titleMedium.lineHeight,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Text(
+                    text = "\u2014 ${quote.author}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.End)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardStreakSection(streak: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (streak > 0)
+                MaterialTheme.colorScheme.tertiaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.LocalFireDepartment,
+                contentDescription = null,
+                tint = if (streak > 0)
+                    MaterialTheme.colorScheme.onTertiaryContainer
+                else
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(40.dp)
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Daily streak",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (streak > 0) {
+                    Text(
+                        text = "$streak day${if (streak == 1) "" else "s"}",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+                    Text(
+                        text = "logged in a row",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Text(
+                        text = "Log a PR or bodyweight today to start.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardLiftsSection(
+    prs: List<PR>,
+    homeLifts: List<String>,
+    useKg: Boolean,
+    onOpenExercise: (String) -> Unit,
+    onOpenLogDifferentExercise: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            val liftColors = listOf(
+                MaterialTheme.colorScheme.primary,
+                MaterialTheme.colorScheme.tertiary,
+                MaterialTheme.colorScheme.secondary
+            )
+            if (homeLifts.isEmpty()) {
+                Text(
+                    text = "No lifts selected. Customize in Settings.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            } else {
+                for ((index, lift) in homeLifts.withIndex()) {
+                    val liftPrs = remember(prs, lift) {
+                        prs
+                            .filter { it.exercise == lift }
                             .sortedByDescending { parsePrDateOrMin(it.date) }
                             .take(5)
                             .sortedBy { parsePrDateOrMin(it.date) }
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenExercise(lift) }
                     ) {
-                        val latest = bwPreview.lastOrNull()
-                        if (latest != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .widthIn(min = 0.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    modifier = Modifier.size(4.dp, 24.dp),
+                                    shape = RoundedCornerShape(2.dp),
+                                    color = liftColors.getOrNull(index)
+                                        ?: MaterialTheme.colorScheme.primary
+                                ) {}
+                                Text(
+                                    text = lift,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+
+                            val latest = liftPrs.lastOrNull()
+                            if (latest != null) {
+                                Text(
+                                    text = formatWeight(latest.weight, useKg),
+                                    style = MaterialTheme.typography.titleSmall,
+                                    modifier = Modifier.padding(start = 8.dp)
+                                )
+                            }
+                        }
+
+                        if (liftPrs.isNotEmpty()) {
+                            ExerciseGraph(
+                                prs = liftPrs,
+                                selectedPr = null,
+                                onPointSelected = {},
+                                useKg = useKg,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(152.dp)
+                                    .padding(top = 8.dp),
+                                showAxisLabels = false,
+                                showTitle = false,
+                                showGrid = false,
+                                lineColor = liftColors.getOrNull(index),
+                                interactive = false
+                            )
+                        } else {
                             Text(
-                                text = formatWeight(latest.weight, useKg),
-                                style = MaterialTheme.typography.titleSmall
+                                text = "No PRs logged yet. Tap to add and view more.",
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }
 
-                    if (bwPreview.isNotEmpty()) {
-                        BodyWeightGraph(
-                            entries = bwPreview,
-                            selectedEntry = null,
-                            onPointSelected = {},
-                            useKg = useKg,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(172.dp)
-                                .padding(top = 8.dp),
-                            showAxisLabels = false,
-                            showTitle = false,
-                            showGrid = false,
-                            lineColor = MaterialTheme.colorScheme.tertiary,
-                            interactive = false
-                        )
-                    } else {
-                        Text(
-                            text = "No bodyweight entries yet. Tap to add your first entry.",
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                    if (index != homeLifts.lastIndex) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
                 }
             }
-        }
 
-        // -------- TOOLS SHORTCUT --------
-        AnimatedDashboardSection(4) {
-            Card(
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onOpenTools() },
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                    .clickable { onOpenLogDifferentExercise() }
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Log different exercise",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardBodyweightSection(
+    bodyWeights: List<BodyWeightEntry>,
+    useKg: Boolean,
+    onOpenBodyweight: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpenBodyweight() },
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            val bwPreview = remember(bodyWeights) {
+                bodyWeights
+                    .sortedByDescending { parsePrDateOrMin(it.date) }
+                    .take(5)
+                    .sortedBy { parsePrDateOrMin(it.date) }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
+                        .weight(1f)
+                        .widthIn(min = 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Build,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(28.dp)
+                    Surface(
+                        modifier = Modifier.size(4.dp, 24.dp),
+                        shape = RoundedCornerShape(2.dp),
+                        color = MaterialTheme.colorScheme.tertiary
+                    ) {}
+                    Text(
+                        text = "Bodyweight",
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Tools",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "TDEE, 1RM, protein, body fat",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                }
+
+                val latest = bwPreview.lastOrNull()
+                if (latest != null) {
+                    Text(
+                        text = formatWeight(latest.weight, useKg),
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+
+            if (bwPreview.isNotEmpty()) {
+                BodyWeightGraph(
+                    entries = bwPreview,
+                    selectedEntry = null,
+                    onPointSelected = {},
+                    useKg = useKg,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(172.dp)
+                        .padding(top = 8.dp),
+                    showAxisLabels = false,
+                    showTitle = false,
+                    showGrid = false,
+                    lineColor = MaterialTheme.colorScheme.tertiary,
+                    interactive = false
+                )
+            } else {
+                Text(
+                    text = "No bodyweight entries yet. Tap to add your first entry.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardToolsSection(onOpenTools: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpenTools() },
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Build,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Tools",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "TDEE, 1RM, protein, body fat",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardThisWeekSection(
+    weekSnapshot: ThisWeekSnapshot,
+    useKg: Boolean
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "This week",
+            style = MaterialTheme.typography.titleLarge
+        )
+        Text(
+            text = "${weekSnapshot.weekRangeLabel} \u00b7 vs previous 7 days",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Sessions", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = "${weekSnapshot.sessionsThisWeek} day${if (weekSnapshot.sessionsThisWeek == 1) "" else "s"}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Sets logged", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = "${weekSnapshot.totalSetsThisWeek}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Exercises", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = "${weekSnapshot.exercisesTracked}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Volume", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = buildString {
+                            val vol = weekSnapshot.volumeThisWeekKg
+                            append(
+                                if (vol >= 1000) "%.1fk".format(vol / 1000) else "%.0f".format(vol)
+                            )
+                            append(" kg")
+                            weekSnapshot.volumeVsLastWeekPercent?.let { pct ->
+                                append(" ")
+                                append(if (pct >= 0) "+" else "")
+                                append("%.0f%%".format(pct))
+                                append(" vs last")
+                            }
+                        },
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Avg reps \u00b7 intensity",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = if (weekSnapshot.totalSetsThisWeek > 0)
+                            "~${"%.0f".format(weekSnapshot.avgReps)} \u00b7 ${weekSnapshot.avgIntensity}"
+                        else "\u2014",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("BW change", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = weekSnapshot.bwChangeKg?.let { delta ->
+                            val sign = if (delta >= 0) "+" else "\u2013"
+                            val abs = kotlin.math.abs(delta)
+                            val displayVal = if (useKg) abs else abs * KG_TO_LB
+                            "$sign${"%.1f".format(displayVal)} ${if (useKg) "kg" else "lb"}"
+                        } ?: "\u2014",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Strength trend", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = when (weekSnapshot.strengthTrend) {
+                            StrengthTrend.UP -> "\u2191 Up"
+                            StrengthTrend.DOWN -> "\u2193 Down"
+                            StrengthTrend.STABLE -> "\u2192 Stable"
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = when (weekSnapshot.strengthTrend) {
+                            StrengthTrend.UP -> MaterialTheme.colorScheme.primary
+                            StrengthTrend.DOWN -> MaterialTheme.colorScheme.error
+                            StrengthTrend.STABLE -> MaterialTheme.colorScheme.onSurface
+                        }
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "Fatigue estimate",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = weekSnapshot.fatigueEstimate,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }
+    }
+}
 
-        // -------- THIS WEEK SNAPSHOT --------
-        val weekSnapshot = remember(prs, bodyWeights, useKg) {
-            computeThisWeekSnapshot(prs, bodyWeights, useKg)
-        }
-        AnimatedDashboardSection(5) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+@Composable
+private fun DashboardLeaderboardSection(onOpenLeaderboard: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Leaderboard",
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenLeaderboard() },
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Leaderboard,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Leaderboard", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = "This week",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        text = "${weekSnapshot.weekRangeLabel} \u00b7 vs previous 7 days",
+                        text = "See how your PRs stack up.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(24.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Sessions", style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text = "${weekSnapshot.sessionsThisWeek} day${if (weekSnapshot.sessionsThisWeek == 1) "" else "s"}",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Sets logged", style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text = "${weekSnapshot.totalSetsThisWeek}",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Exercises", style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text = "${weekSnapshot.exercisesTracked}",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Volume", style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text = buildString {
-                                        val vol = weekSnapshot.volumeThisWeekKg
-                                        append(
-                                            if (vol >= 1000) "%.1fk".format(vol / 1000) else "%.0f".format(
-                                                vol
-                                            )
-                                        )
-                                        append(" kg")
-                                        weekSnapshot.volumeVsLastWeekPercent?.let { pct ->
-                                            append(" ")
-                                            append(if (pct >= 0) "+" else "")
-                                            append("%.0f%%".format(pct))
-                                            append(" vs last")
-                                        }
-                                    },
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    "Avg reps \u00b7 intensity",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Text(
-                                    text = if (weekSnapshot.totalSetsThisWeek > 0)
-                                        "~${"%.0f".format(weekSnapshot.avgReps)} \u00b7 ${weekSnapshot.avgIntensity}"
-                                    else "\u2014",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("BW change", style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text = weekSnapshot.bwChangeKg?.let { delta ->
-                                        val sign = if (delta >= 0) "+" else "\u2013"
-                                        val abs = kotlin.math.abs(delta)
-                                        val displayVal = if (useKg) abs else abs * KG_TO_LB
-                                        "$sign${"%.1f".format(displayVal)} ${if (useKg) "kg" else "lb"}"
-                                    } ?: "\u2014",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Strength trend", style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text = when (weekSnapshot.strengthTrend) {
-                                        StrengthTrend.UP -> "\u2191 Up"
-                                        StrengthTrend.DOWN -> "\u2193 Down"
-                                        StrengthTrend.STABLE -> "\u2192 Stable"
-                                    },
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = when (weekSnapshot.strengthTrend) {
-                                        StrengthTrend.UP -> MaterialTheme.colorScheme.primary
-                                        StrengthTrend.DOWN -> MaterialTheme.colorScheme.error
-                                        StrengthTrend.STABLE -> MaterialTheme.colorScheme.onSurface
-                                    }
-                                )
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    "Fatigue estimate",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Text(
-                                    text = weekSnapshot.fatigueEstimate,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-        // -------- LEADERBOARD PREVIEW --------
-        AnimatedDashboardSection(6) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "Leaderboard",
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onOpenLeaderboard() },
-                    shape = RoundedCornerShape(24.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Leaderboard,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Leaderboard", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                text = "See how your PRs stack up.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
                 }
             }
         }
