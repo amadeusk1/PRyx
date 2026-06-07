@@ -36,7 +36,6 @@ import androidx.compose.material3.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
-import androidx.compose.runtime.SideEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.delay
@@ -206,7 +205,7 @@ private fun LiftLogRootContent(
         mutableStateOf(loadHomeLiftLayout(context, emptyList()))
     }
 
-    SideEffect(exercises) {
+    LaunchedEffect(exercises) {
         val merged = mergeHomeLiftLayout(homeLiftLayout, exercises)
         if (merged != homeLiftLayout) {
             homeLiftLayout = merged
