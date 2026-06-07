@@ -779,7 +779,7 @@ private fun LiftLogRootContent(
         HomeScreenSettingsDialog(
             layout = dashboardLayout,
             homeLifts = homeLifts,
-            availableLifts = availableHomeLiftOptions(exercises),
+            availableLifts = availableHomeLiftOptions(exercises, homeLifts),
             onLayoutChange = { updated ->
                 dashboardLayout = updated
                 saveDashboardLayout(context, updated)
