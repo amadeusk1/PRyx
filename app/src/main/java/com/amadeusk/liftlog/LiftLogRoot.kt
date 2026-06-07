@@ -36,6 +36,7 @@ import androidx.compose.material3.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
+import androidx.compose.runtime.SideEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.delay
@@ -53,13 +54,14 @@ import com.amadeusk.liftlog.data.loadBodyWeightsFromFile
 import com.amadeusk.liftlog.data.saveBodyWeightsToFile
 import com.amadeusk.liftlog.data.DashboardSection
 import com.amadeusk.liftlog.data.DashboardSectionItem
-import com.amadeusk.liftlog.data.availableHomeLiftOptions
+import com.amadeusk.liftlog.data.homeLiftsFromLayout
 import com.amadeusk.liftlog.data.loadDashboardLayout
-import com.amadeusk.liftlog.data.loadHomeLifts
+import com.amadeusk.liftlog.data.loadHomeLiftLayout
+import com.amadeusk.liftlog.data.mergeHomeLiftLayout
 import com.amadeusk.liftlog.data.loadUseKg
 import com.amadeusk.liftlog.data.saveUseKg
 import com.amadeusk.liftlog.data.saveDashboardLayout
-import com.amadeusk.liftlog.data.saveHomeLifts
+import com.amadeusk.liftlog.data.saveHomeLiftLayout
 import com.amadeusk.liftlog.data.loadDarkTheme
 import com.amadeusk.liftlog.data.loadAggressiveRemindersEnabled
 import com.amadeusk.liftlog.data.loadAggressiveAgeConfirmed
@@ -200,7 +202,19 @@ private fun LiftLogRootContent(
     var showHomeScreenSettings by remember { mutableStateOf(false) }
 
     var dashboardLayout by remember(context) { mutableStateOf(loadDashboardLayout(context)) }
-    var homeLifts by remember(context) { mutableStateOf(loadHomeLifts(context)) }
+    var homeLiftLayout by remember(context) {
+        mutableStateOf(loadHomeLiftLayout(context, emptyList()))
+    }
+
+    SideEffect(exercises) {
+        val merged = mergeHomeLiftLayout(homeLiftLayout, exercises)
+        if (merged != homeLiftLayout) {
+            homeLiftLayout = merged
+            saveHomeLiftLayout(context, merged)
+        }
+    }
+
+    val homeLifts = homeLiftsFromLayout(homeLiftLayout)
 
     var remindersEnabled by remember(context) { mutableStateOf(loadReminderEnabled(context)) }
 
@@ -781,15 +795,14 @@ private fun LiftLogRootContent(
     if (showHomeScreenSettings) {
         HomeScreenSettingsDialog(
             layout = dashboardLayout,
-            homeLifts = homeLifts,
-            availableLifts = availableHomeLiftOptions(exercises, homeLifts),
+            homeLiftLayout = homeLiftLayout,
             onLayoutChange = { updated ->
                 dashboardLayout = updated
                 saveDashboardLayout(context, updated)
             },
-            onHomeLiftsChange = { updated ->
-                homeLifts = updated
-                saveHomeLifts(context, updated)
+            onHomeLiftLayoutChange = { updated ->
+                homeLiftLayout = updated
+                saveHomeLiftLayout(context, updated)
             },
             onDismiss = { showHomeScreenSettings = false }
         )
