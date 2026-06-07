@@ -29,6 +29,8 @@ data class HomeLiftItem(
 
 val DEFAULT_HOME_LIFTS = listOf("Bench Press", "Squat", "Deadlift")
 
+fun isCoreLift(name: String): Boolean = name in DEFAULT_HOME_LIFTS
+
 private const val PREFS_NAME = "lift log_settings"
 private const val KEY_DASHBOARD_LAYOUT = "dashboardLayout"
 private const val KEY_HOME_LIFTS = "homeLifts"

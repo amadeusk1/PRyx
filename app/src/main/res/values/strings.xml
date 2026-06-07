@@ -61,4 +61,12 @@
     <string name="settings_aggressive_age_message">Aggressive notifications contain adult language. You must confirm that you are 18 or older to enable this mode.</string>
     <string name="settings_aggressive_age_confirm_button">I am 18+</string>
     <string name="settings_aggressive_age_cancel_button">Cancel</string>
+    <string name="settings_custom_exercises_section">Custom exercises</string>
+    <string name="settings_custom_exercises_hint">Remove exercises you no longer track. All PRs for that exercise will be deleted.</string>
+    <string name="settings_custom_exercises_empty">No custom exercises yet.</string>
+    <string name="settings_delete_exercise_content_description">Delete exercise</string>
+    <string name="settings_delete_exercise_title">Delete exercise?</string>
+    <string name="settings_delete_exercise_message">All PRs for \"%1$s\" will be permanently deleted. This cannot be undone.</string>
+    <string name="settings_delete_exercise_confirm">Delete</string>
+    <string name="settings_delete_exercise_cancel">Cancel</string>
 </resources>

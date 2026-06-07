@@ -54,6 +54,7 @@ import com.amadeusk.liftlog.data.saveBodyWeightsToFile
 import com.amadeusk.liftlog.data.DashboardSection
 import com.amadeusk.liftlog.data.DashboardSectionItem
 import com.amadeusk.liftlog.data.homeLiftsFromLayout
+import com.amadeusk.liftlog.data.isCoreLift
 import com.amadeusk.liftlog.data.loadDashboardLayout
 import com.amadeusk.liftlog.data.loadHomeLiftLayout
 import com.amadeusk.liftlog.data.mergeHomeLiftLayout
@@ -78,6 +79,7 @@ import com.amadeusk.liftlog.ui.components.BodyWeightItem
 import com.amadeusk.liftlog.ui.components.ExerciseSelector
 import com.amadeusk.liftlog.ui.components.GraphRangeSelector
 import com.amadeusk.liftlog.ui.components.PRItem
+import com.amadeusk.liftlog.ui.components.CustomExercisesSection
 import com.amadeusk.liftlog.ui.components.HomeScreenSettingsDialog
 import com.amadeusk.liftlog.ui.components.LiveLeaderboardSubmitDialog
 import com.amadeusk.liftlog.ui.components.PrDialog
@@ -211,6 +213,10 @@ private fun LiftLogRootContent(
             homeLiftLayout = merged
             saveHomeLiftLayout(context, merged)
         }
+    }
+
+    val customExercises = remember(exercises) {
+        exercises.filter { !isCoreLift(it) }.sorted()
     }
 
     val homeLifts = homeLiftsFromLayout(homeLiftLayout)
@@ -680,7 +686,11 @@ private fun LiftLogRootContent(
             },
             title = { Text("Settings") },
             text = {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
                             selected = useKg,
@@ -721,6 +731,29 @@ private fun LiftLogRootContent(
                     }) {
                         Text("Customize layout and lifts")
                     }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CustomExercisesSection(
+                        customExercises = customExercises,
+                        onDeleteExercise = { exercise ->
+                            viewModel.deleteExercise(exercise)
+                            val updatedLayout = homeLiftLayout.filter { it.name != exercise }
+                            if (updatedLayout.size != homeLiftLayout.size) {
+                                homeLiftLayout = updatedLayout
+                                saveHomeLiftLayout(context, updatedLayout)
+                            }
+                            if (selectedExercise == exercise) {
+                                selectedExercise = exercises
+                                    .filter { it != exercise }
+                                    .firstOrNull()
+                                selectedGraphPr = null
+                            }
+                        }
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     HorizontalDivider(modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(12.dp))

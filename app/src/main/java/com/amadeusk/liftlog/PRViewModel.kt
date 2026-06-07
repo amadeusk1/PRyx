@@ -62,6 +62,14 @@ class PRViewModel(application: Application) : AndroidViewModel(application) {
         persist()
     }
 
+    // Delete all PRs for an exercise (custom exercise removal)
+    fun deleteExercise(exercise: String) {
+        _uiState.update { state ->
+            state.copy(prs = state.prs.filter { it.exercise != exercise })
+        }
+        persist()
+    }
+
     // Update an existing PR entry (matched by ID)
     fun updatePr(updated: PR) {
         _uiState.update { state ->
