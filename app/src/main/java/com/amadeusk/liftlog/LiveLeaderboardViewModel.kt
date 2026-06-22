@@ -25,7 +25,8 @@ data class LiveLeaderboardUiState(
     val errorMessage: String? = null,
     val submitSuccess: Boolean = false,
     val acceptedSubmissions: List<com.amadeusk.liftlog.data.AcceptedSubmission> = emptyList(),
-    val isLoadingList: Boolean = false
+    val isLoadingList: Boolean = false,
+    val listErrorMessage: String? = null
 )
 
 class LiveLeaderboardViewModel : ViewModel() {
@@ -42,7 +43,7 @@ class LiveLeaderboardViewModel : ViewModel() {
     /** Load accepted submissions from the server. */
     fun fetchAcceptedList() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingList = true) }
+            _uiState.update { it.copy(isLoadingList = true, listErrorMessage = null) }
             try {
                 val response = withContext(ioDispatcher) { PrSubmitApi.service.getAcceptedList() }
                 val body = response.body()
@@ -50,14 +51,25 @@ class LiveLeaderboardViewModel : ViewModel() {
                     _uiState.update {
                         it.copy(
                             acceptedSubmissions = body.submissions ?: emptyList(),
-                            isLoadingList = false
+                            isLoadingList = false,
+                            listErrorMessage = null
                         )
                     }
                 } else {
-                    _uiState.update { it.copy(isLoadingList = false) }
+                    _uiState.update {
+                        it.copy(
+                            isLoadingList = false,
+                            listErrorMessage = body?.error ?: "Could not load leaderboard (${response.code()})"
+                        )
+                    }
                 }
-            } catch (_: Exception) {
-                _uiState.update { it.copy(isLoadingList = false) }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoadingList = false,
+                        listErrorMessage = e.message ?: "Network error"
+                    )
+                }
             }
         }
     }

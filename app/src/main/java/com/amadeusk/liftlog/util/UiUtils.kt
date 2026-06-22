@@ -146,17 +146,32 @@ fun currentActivityStreak(
 }
 
 // ---- Rep filter for PR graph/history ----
-enum class RepRange(val reps: Int?) {
+enum class RepRange(val reps: Int? = null, val isEightPlus: Boolean = false) {
     ONE(1),
+    TWO(2),
     THREE(3),
+    FOUR(4),
+    FIVE(5),
     SIX(6),
+    SEVEN(7),
     EIGHT(8),
-    ALL(null)
+    EIGHT_PLUS(isEightPlus = true),
+    ALL;
+
+    val label: String
+        get() = when (this) {
+            ALL -> "All reps"
+            EIGHT_PLUS -> "8+ reps"
+            else -> "$reps rep"
+        }
 }
 
 fun filterPrsByRepRange(prs: List<PR>, repRange: RepRange): List<PR> {
-    val r = repRange.reps ?: return prs
-    return prs.filter { it.reps == r }
+    return when (repRange) {
+        RepRange.ALL -> prs
+        RepRange.EIGHT_PLUS -> prs.filter { it.reps > 8 }
+        else -> prs.filter { it.reps == repRange.reps }
+    }
 }
 
 // Shared date formatter (expects yyyy-MM-dd)
@@ -229,6 +244,25 @@ fun formatWeight(weightKg: Double, useKg: Boolean): String {
     val value = weightKg.toDisplayWeight(useKg)
     val unit = if (useKg) "kg" else "lb"
     return "${"%.1f".format(value)} $unit"
+}
+
+fun formatVolume(volumeKg: Double, useKg: Boolean): String {
+    val value = volumeKg.toDisplayWeight(useKg)
+    val unit = if (useKg) "kg" else "lb"
+    val formatted = if (value >= 1000) "%.1fk".format(value / 1000) else "%.0f".format(value)
+    return "$formatted $unit"
+}
+
+/** Estimated 1RM (kg) via Epley formula (reps 1–12). */
+fun estimatedOneRmKg(weightKg: Double, reps: Int): Double? {
+    if (reps !in 1..12) return null
+    return weightKg * (1.0 + reps / 30.0)
+}
+
+/** 1RM estimate from the most recent logged set for an exercise. */
+fun estimatedOneRmFromLatestPr(prs: List<PR>): Double? {
+    val latest = prs.maxByOrNull { parsePrDateOrMin(it.date) } ?: return null
+    return estimatedOneRmKg(latest.weight, latest.reps)
 }
 
 // ---- This Week Snapshot (minimal, no gamification) ----

@@ -69,14 +69,6 @@ fun RepRangeSelector(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    val label = when (selectedRange) {
-        RepRange.ONE -> "1 rep"
-        RepRange.THREE -> "3 rep"
-        RepRange.SIX -> "6 rep"
-        RepRange.EIGHT -> "8 rep"
-        RepRange.ALL -> "All reps"
-    }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -88,24 +80,18 @@ fun RepRangeSelector(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(label)
+            Text(selectedRange.label)
         }
 
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            listOf(
-                "1 rep" to RepRange.ONE,
-                "3 rep" to RepRange.THREE,
-                "6 rep" to RepRange.SIX,
-                "8 rep" to RepRange.EIGHT,
-                "All reps" to RepRange.ALL
-            ).forEach { (text, value) ->
+            RepRange.entries.forEach { range ->
                 DropdownMenuItem(
-                    text = { Text(text) },
+                    text = { Text(range.label) },
                     onClick = {
-                        onRangeSelected(value)
+                        onRangeSelected(range)
                         expanded = false
                     }
                 )

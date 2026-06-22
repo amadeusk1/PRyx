@@ -19,6 +19,9 @@ import androidx.compose.ui.unit.dp
 
 // Math for Navy method logs
 import kotlin.math.log10
+import com.amadeusk.liftlog.util.estimatedOneRmKg
+import com.amadeusk.liftlog.util.fromDisplayWeight
+import com.amadeusk.liftlog.util.toDisplayWeight
 
 // Sub-tabs within the Tools screen
 enum class InfoSubTab {
@@ -404,7 +407,7 @@ fun OneRmCalculator() {
                     val weight = weightText.toDoubleOrNull()
                     val reps = repsText.toIntOrNull()
                     val oneRm = if (weight != null && reps != null && reps in 1..12) {
-                        weight * (1.0 + reps.toDouble() / 30.0)
+                        estimatedOneRmKg(weight.fromDisplayWeight(useKg), reps)
                     } else null
 
                     if (oneRm != null) {
@@ -422,11 +425,12 @@ fun OneRmCalculator() {
         } else {
             val oneRm = savedOneRm
             if (oneRm != null) {
+                val displayOneRm = oneRm.toDisplayWeight(useKg)
                 Text(
                     text = "Estimated 1RM",
                     style = MaterialTheme.typography.titleMedium
                 )
-                Text("1RM ≈ ${String.format("%.1f", oneRm)} ${if (useKg) "kg" else "lb"}")
+                Text("1RM ≈ ${String.format("%.1f", displayOneRm)} ${if (useKg) "kg" else "lb"}")
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -437,7 +441,7 @@ fun OneRmCalculator() {
 
                 val percents = listOf(0.6, 0.7, 0.8, 0.9)
                 percents.forEach { p ->
-                    val w = oneRm * p
+                    val w = displayOneRm * p
                     Text(
                         text = "${(p * 100).toInt()}% ≈ ${String.format("%.1f", w)} ${if (useKg) "kg" else "lb"}"
                     )

@@ -37,5 +37,6 @@ data class AcceptedSubmission(
 /** Response from GET pr_accepted.php */
 data class PrListResponse(
     @SerializedName("ok") val ok: Boolean,
-    @SerializedName("submissions") val submissions: List<AcceptedSubmission>?
+    @SerializedName("submissions") val submissions: List<AcceptedSubmission>?,
+    @SerializedName("error") val error: String? = null
 )

@@ -5,7 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -80,7 +80,7 @@ fun HomeScreenSettingsDialog(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Choose what appears. Drag a section to reorder.",
+                    text = "Choose what appears. Hold a section, then drag to reorder.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -117,7 +117,7 @@ fun HomeScreenSettingsDialog(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Choose which lifts appear. Drag a lift to reorder.",
+                    text = "Choose which lifts appear. Hold a lift, then drag to reorder.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -311,7 +311,7 @@ private fun ReorderableSettingRow(
             }
             .zIndex(if (isDragging) 1f else 0f)
             .pointerInput(itemKey) {
-                detectDragGestures(
+                detectDragGesturesAfterLongPress(
                     onDragStart = { currentOnDragStart() },
                     onDrag = { change, dragAmount ->
                         change.consume()

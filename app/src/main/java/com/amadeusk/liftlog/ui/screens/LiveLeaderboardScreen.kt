@@ -29,14 +29,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
-import androidx.compose.animation.core.animateFloatAsState
-import kotlinx.coroutines.delay
 import com.amadeusk.liftlog.data.AcceptedSubmission
 import com.amadeusk.liftlog.LiveLeaderboardViewModel
 import com.amadeusk.liftlog.util.LB_TO_KG
 import com.amadeusk.liftlog.util.formatWeight
+import kotlinx.coroutines.delay
 
 private const val TOP_N = 5
 private val EXERCISE_ORDER = listOf("bench" to "Bench", "squat" to "Squat", "deadlift" to "Deadlift")
@@ -71,31 +69,17 @@ fun LiveLeaderboardScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showIntroAnimation by remember { mutableStateOf(true) }
-    LaunchedEffect(Unit) {
-        delay(2200)
-        showIntroAnimation = false
-    }
 
-    if (showIntroAnimation) {
+    if (uiState.isLoadingList && uiState.acceptedSubmissions.isEmpty() && uiState.listErrorMessage == null) {
         LiveLeaderboardLoading(modifier = modifier.fillMaxSize())
         return
     }
-
-    var contentVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { contentVisible = true }
-    val contentAlpha by animateFloatAsState(
-        targetValue = if (contentVisible) 1f else 0f,
-        animationSpec = tween(400),
-        label = "contentAlpha"
-    )
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(24.dp)
-            .graphicsLayer { alpha = contentAlpha }
     ) {
         Text(
             text = "Live Leaderboard",
@@ -109,20 +93,47 @@ fun LiveLeaderboardScreen(
         )
         Spacer(modifier = Modifier.height(20.dp))
 
-        if (uiState.isLoadingList) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+        when {
+            uiState.listErrorMessage != null -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Could not load leaderboard",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = uiState.listErrorMessage!!,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(onClick = { viewModel.fetchAcceptedList() }) {
+                            Text("Retry")
+                        }
+                    }
+                }
             }
-        } else if (uiState.acceptedSubmissions.isEmpty()) {
-            Text(
-                text = "No accepted submissions yet.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        } else {
+            uiState.isLoadingList -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.padding(16.dp))
+                }
+            }
+            uiState.acceptedSubmissions.isEmpty() -> {
+                Text(
+                    text = "No accepted submissions yet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            else -> {
             val byExercise = remember(uiState.acceptedSubmissions) {
                 groupTop5ByExercise(uiState.acceptedSubmissions)
             }
@@ -203,6 +214,7 @@ fun LiveLeaderboardScreen(
                         }
                     }
                 }
+            }
             }
         }
         Spacer(modifier = Modifier.height(24.dp))

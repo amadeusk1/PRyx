@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Star
 
 // Material UI
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -96,10 +97,12 @@ import com.amadeusk.liftlog.util.StrengthTrend
 import com.amadeusk.liftlog.util.ThisWeekSnapshot
 import com.amadeusk.liftlog.util.computeThisWeekSnapshot
 import com.amadeusk.liftlog.util.KG_TO_LB
+import com.amadeusk.liftlog.util.estimatedOneRmFromLatestPr
 import com.amadeusk.liftlog.util.currentActivityStreak
 import com.amadeusk.liftlog.util.filterBodyWeightsByRange
 import com.amadeusk.liftlog.util.filterPrsByRange
 import com.amadeusk.liftlog.util.filterPrsByRepRange
+import com.amadeusk.liftlog.util.formatVolume
 import com.amadeusk.liftlog.util.formatWeight
 import com.amadeusk.liftlog.util.fromDisplayWeight
 import com.amadeusk.liftlog.util.DailyQuote
@@ -112,7 +115,7 @@ import java.time.LocalDate
 import com.amadeusk.liftlog.ui.theme.LiftLogTheme
 
 // Top-level pages (separate from the tab row)
-private enum class TopPage { DASHBOARD, TRAINING, INFO, LEADERBOARD, LIVE_LEADERBOARD }
+private enum class TopPage { DASHBOARD, INFO, LEADERBOARD, LIVE_LEADERBOARD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -157,7 +160,8 @@ private fun LiftLogRootContent(
     // UI state coming from ViewModel (PR list, etc.)
     val uiState by viewModel.uiState.collectAsState()
 
-    // Current selected tab (PRS / BODYWEIGHT / TOOLS)
+    // Current selected tab (PRS / BODYWEIGHT / TOOLS); home dashboard via top-bar icon
+    var showHomeDashboard by remember { mutableStateOf(true) }
     var currentTab by remember { mutableStateOf(LiftLogTab.PRS) }
 
     // PR dialogs + editing state
@@ -182,7 +186,7 @@ private fun LiftLogRootContent(
     // Shared range selector for both graphs (month/year/all)
     var selectedRange by remember { mutableStateOf(GraphRange.MONTH) }
 
-    // Rep filter selector for PRs (1/3/6/8/all)
+    // Rep filter selector for PRs (1–8, 8+, all)
     var selectedRepRange by remember { mutableStateOf(RepRange.ALL) }
 
     // Bodyweight entries (loaded from file, stored locally in this screen)
@@ -276,8 +280,11 @@ private fun LiftLogRootContent(
 
                         // Home button (go back to dashboard)
                         IconButton(
-                            onClick = { topPage = TopPage.DASHBOARD },
-                            enabled = topPage != TopPage.DASHBOARD
+                            onClick = {
+                                topPage = TopPage.DASHBOARD
+                                showHomeDashboard = true
+                            },
+                            enabled = topPage != TopPage.DASHBOARD || !showHomeDashboard
                         ) {
                             Icon(Icons.Filled.Home, contentDescription = "Home")
                         }
@@ -317,7 +324,9 @@ private fun LiftLogRootContent(
                         Text("+")
                     }
                 }
-                topPage == TopPage.TRAINING && currentTab != LiftLogTab.TOOLS -> {
+                topPage == TopPage.DASHBOARD &&
+                    !showHomeDashboard &&
+                    currentTab != LiftLogTab.TOOLS -> {
                     FloatingActionButton(
                         onClick = {
                             when (currentTab) {
@@ -341,42 +350,7 @@ private fun LiftLogRootContent(
                 .fillMaxSize()
         ) {
 
-            // If user is on a top-level page, show it and exit early
             when (topPage) {
-                TopPage.DASHBOARD -> {
-                    DashboardScreen(
-                        prs = uiState.prs,
-                        bodyWeights = bodyWeights,
-                        useKg = useKg,
-                        dashboardLayout = dashboardLayout,
-                        homeLifts = homeLifts,
-                        onOpenExercise = { exercise ->
-                            selectedExercise = exercise
-                            selectedGraphPr = null
-                            selectedRange = GraphRange.MONTH
-                            selectedRepRange = RepRange.ALL
-                            currentTab = LiftLogTab.PRS
-                            topPage = TopPage.TRAINING
-                        },
-                        onOpenBodyweight = {
-                            selectedBwEntry = null
-                            selectedRange = GraphRange.MONTH
-                            currentTab = LiftLogTab.BODYWEIGHT
-                            topPage = TopPage.TRAINING
-                        },
-                        onOpenTools = {
-                            currentTab = LiftLogTab.TOOLS
-                            topPage = TopPage.TRAINING
-                        },
-                        onOpenLeaderboard = { topPage = TopPage.LEADERBOARD },
-                        onOpenLogDifferentExercise = {
-                            currentTab = LiftLogTab.PRS
-                            topPage = TopPage.TRAINING
-                            showAddPrDialog = true
-                        }
-                    )
-                    return@Column
-                }
                 TopPage.INFO -> {
                     InfoScreen()
                     return@Column
@@ -400,35 +374,77 @@ private fun LiftLogRootContent(
                 else -> {}
             }
 
-            // ------------------ TAB BAR (MAIN PAGE) ------------------
-            if (topPage == TopPage.TRAINING) {
+            if (topPage == TopPage.DASHBOARD) {
                 TabRow(
                     selectedTabIndex = currentTab.ordinal,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    indicator = { tabPositions ->
+                        if (!showHomeDashboard) {
+                            TabRowDefaults.PrimaryIndicator(
+                                Modifier.tabIndicatorOffset(tabPositions[currentTab.ordinal])
+                            )
+                        }
+                    }
                 ) {
                     Tab(
-                        selected = currentTab == LiftLogTab.PRS,
-                        onClick = { currentTab = LiftLogTab.PRS },
+                        selected = !showHomeDashboard && currentTab == LiftLogTab.PRS,
+                        onClick = {
+                            showHomeDashboard = false
+                            currentTab = LiftLogTab.PRS
+                        },
                         text = { Text("PRs") }
                     )
                     Tab(
-                        selected = currentTab == LiftLogTab.BODYWEIGHT,
-                        onClick = { currentTab = LiftLogTab.BODYWEIGHT },
+                        selected = !showHomeDashboard && currentTab == LiftLogTab.BODYWEIGHT,
+                        onClick = {
+                            showHomeDashboard = false
+                            currentTab = LiftLogTab.BODYWEIGHT
+                        },
                         text = { Text("Bodyweight") }
                     )
                     Tab(
-                        selected = currentTab == LiftLogTab.TOOLS,
-                        onClick = { currentTab = LiftLogTab.TOOLS },
+                        selected = !showHomeDashboard && currentTab == LiftLogTab.TOOLS,
+                        onClick = {
+                            showHomeDashboard = false
+                            currentTab = LiftLogTab.TOOLS
+                        },
                         text = { Text("Tools") }
                     )
                 }
-            }
 
-            // ------------------ TAB CONTENT ------------------
-            if (topPage == TopPage.TRAINING) {
-                when (currentTab) {
-
-                    // ---------- PR TAB ----------
+                if (showHomeDashboard) {
+                    DashboardScreen(
+                        prs = uiState.prs,
+                        bodyWeights = bodyWeights,
+                        useKg = useKg,
+                        dashboardLayout = dashboardLayout,
+                        homeLifts = homeLifts,
+                        onOpenExercise = { exercise ->
+                            selectedExercise = exercise
+                            selectedGraphPr = null
+                            selectedRange = GraphRange.MONTH
+                            selectedRepRange = RepRange.ALL
+                            showHomeDashboard = false
+                            currentTab = LiftLogTab.PRS
+                        },
+                        onOpenBodyweight = {
+                            selectedBwEntry = null
+                            selectedRange = GraphRange.MONTH
+                            showHomeDashboard = false
+                            currentTab = LiftLogTab.BODYWEIGHT
+                        },
+                        onOpenTools = {
+                            showHomeDashboard = false
+                            currentTab = LiftLogTab.TOOLS
+                        },
+                        onOpenLeaderboard = { topPage = TopPage.LEADERBOARD },
+                        onOpenLogDifferentExercise = {
+                            showHomeDashboard = false
+                            currentTab = LiftLogTab.PRS
+                            showAddPrDialog = true
+                        }
+                    )
+                } else when (currentTab) {
                     LiftLogTab.PRS -> {
                     // Only show selector + graph if we have exercises
                     if (exercises.isNotEmpty()) {
@@ -1230,12 +1246,17 @@ private fun DashboardLiftsSection(
                 )
             } else {
                 for ((index, lift) in homeLifts.withIndex()) {
-                    val liftPrs = remember(prs, lift) {
-                        prs
-                            .filter { it.exercise == lift }
+                    val allLiftPrs = remember(prs, lift) {
+                        prs.filter { it.exercise == lift }
+                    }
+                    val liftPrs = remember(allLiftPrs) {
+                        allLiftPrs
                             .sortedByDescending { parsePrDateOrMin(it.date) }
                             .take(5)
                             .sortedBy { parsePrDateOrMin(it.date) }
+                    }
+                    val estOneRmKg = remember(allLiftPrs) {
+                        if (isCoreLift(lift)) estimatedOneRmFromLatestPr(allLiftPrs) else null
                     }
 
                     Column(
@@ -1271,12 +1292,23 @@ private fun DashboardLiftsSection(
                             }
 
                             val latest = liftPrs.lastOrNull()
-                            if (latest != null) {
-                                Text(
-                                    text = formatWeight(latest.weight, useKg),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                modifier = Modifier.padding(start = 8.dp)
+                            ) {
+                                if (latest != null) {
+                                    Text(
+                                        text = formatWeight(latest.weight, useKg),
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                }
+                                if (estOneRmKg != null) {
+                                    Text(
+                                        text = "1RM ${formatWeight(estOneRmKg, useKg)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
 
@@ -1529,11 +1561,7 @@ private fun DashboardThisWeekSection(
                     Text("Volume", style = MaterialTheme.typography.bodyMedium)
                     Text(
                         text = buildString {
-                            val vol = weekSnapshot.volumeThisWeekKg
-                            append(
-                                if (vol >= 1000) "%.1fk".format(vol / 1000) else "%.0f".format(vol)
-                            )
-                            append(" kg")
+                            append(formatVolume(weekSnapshot.volumeThisWeekKg, useKg))
                             weekSnapshot.volumeVsLastWeekPercent?.let { pct ->
                                 append(" ")
                                 append(if (pct >= 0) "+" else "")
