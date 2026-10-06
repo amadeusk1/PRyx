@@ -20,7 +20,6 @@ import androidx.compose.foundation.verticalScroll
 // Icons
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Home
@@ -37,7 +36,6 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.graphics.graphicsLayer
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
@@ -82,12 +80,10 @@ import com.amadeusk.liftlog.ui.components.GraphRangeSelector
 import com.amadeusk.liftlog.ui.components.PRItem
 import com.amadeusk.liftlog.ui.components.CustomExercisesDialog
 import com.amadeusk.liftlog.ui.components.HomeScreenSettingsDialog
-import com.amadeusk.liftlog.ui.components.LiveLeaderboardSubmitDialog
 import com.amadeusk.liftlog.ui.components.PrDialog
 import com.amadeusk.liftlog.ui.components.RepRangeSelector
 import com.amadeusk.liftlog.ui.screens.InfoScreen
 import com.amadeusk.liftlog.ui.screens.LeaderboardScreen
-import com.amadeusk.liftlog.ui.screens.LiveLeaderboardScreen
 import com.amadeusk.liftlog.ui.screens.SplashScreen
 import com.amadeusk.liftlog.ui.screens.ToolsScreen
 import com.amadeusk.liftlog.util.GraphRange
@@ -115,7 +111,7 @@ import java.time.LocalDate
 import com.amadeusk.liftlog.ui.theme.LiftLogTheme
 
 // Top-level pages (separate from the tab row)
-private enum class TopPage { DASHBOARD, INFO, LEADERBOARD, LIVE_LEADERBOARD }
+private enum class TopPage { DASHBOARD, INFO, LEADERBOARD }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -247,10 +243,6 @@ private fun LiftLogRootContent(
     // Which top-level page we are currently showing
     var topPage by remember { mutableStateOf(TopPage.DASHBOARD) }
 
-    // Live leaderboard: submit dialog + ViewModel (for FAB and dialog)
-    var showLiveSubmitDialog by remember { mutableStateOf(false) }
-    val liveLeaderboardViewModel: LiveLeaderboardViewModel = viewModel()
-
     // Main app layout structure (top bar + FAB + content)
     Scaffold(
         topBar = {
@@ -291,16 +283,8 @@ private fun LiftLogRootContent(
                     }
                 },
 
-                // Right side: Live leaderboard (trophy) + Personal leaderboard (star) + Settings
+                // Right side: Personal leaderboard (star) + Settings
                 actions = {
-                    // Live leaderboard — trophy icon (left of star)
-                    IconButton(
-                        onClick = { topPage = TopPage.LIVE_LEADERBOARD },
-                        enabled = topPage != TopPage.LIVE_LEADERBOARD
-                    ) {
-                        Icon(Icons.Filled.EmojiEvents, contentDescription = "Live leaderboard")
-                    }
-
                     // Personal leaderboard — star icon
                     IconButton(
                         onClick = { topPage = TopPage.LEADERBOARD },
@@ -318,26 +302,20 @@ private fun LiftLogRootContent(
         },
 
         floatingActionButton = {
-            when {
-                topPage == TopPage.LIVE_LEADERBOARD -> {
-                    FloatingActionButton(onClick = { showLiveSubmitDialog = true }) {
-                        Text("+")
-                    }
-                }
-                topPage == TopPage.DASHBOARD &&
-                    !showHomeDashboard &&
-                    currentTab != LiftLogTab.TOOLS -> {
-                    FloatingActionButton(
-                        onClick = {
-                            when (currentTab) {
-                                LiftLogTab.PRS -> showAddPrDialog = true
-                                LiftLogTab.BODYWEIGHT -> showAddBwDialog = true
-                                else -> {}
-                            }
+            if (topPage == TopPage.DASHBOARD &&
+                !showHomeDashboard &&
+                currentTab != LiftLogTab.TOOLS
+            ) {
+                FloatingActionButton(
+                    onClick = {
+                        when (currentTab) {
+                            LiftLogTab.PRS -> showAddPrDialog = true
+                            LiftLogTab.BODYWEIGHT -> showAddBwDialog = true
+                            else -> {}
                         }
-                    ) {
-                        Text("+")
                     }
+                ) {
+                    Text("+")
                 }
             }
         }
@@ -358,14 +336,6 @@ private fun LiftLogRootContent(
                 TopPage.LEADERBOARD -> {
                     LeaderboardScreen(
                         prs = uiState.prs,
-                        useKg = useKg,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    return@Column
-                }
-                TopPage.LIVE_LEADERBOARD -> {
-                    LiveLeaderboardScreen(
-                        viewModel = liveLeaderboardViewModel,
                         useKg = useKg,
                         modifier = Modifier.fillMaxSize()
                     )
@@ -947,15 +917,6 @@ private fun LiftLogRootContent(
                 )
                 prBeingEdited = null
             }
-        )
-    }
-
-    // ------------------ LIVE LEADERBOARD SUBMIT DIALOG ------------------
-    if (showLiveSubmitDialog) {
-        LiveLeaderboardSubmitDialog(
-            viewModel = liveLeaderboardViewModel,
-            useKg = useKg,
-            onDismiss = { showLiveSubmitDialog = false }
         )
     }
 

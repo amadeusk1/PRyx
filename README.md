@@ -1,5 +1,5 @@
 # PRyx 
-PRyx is a simple strength training companion for Android. It lets you log personal records (PRs) and bodyweight locally, see clean progress graphs on a dashboard, and (optionally) compare your lifts on a live leaderboard.  
+PRyx is a simple strength training companion for Android. It lets you log personal records (PRs) and bodyweight locally, and see clean progress graphs on a dashboard.  
 Built with Kotlin and Jetpack Compose, it focuses on clarity, speed, and minimal interaction—so you can log your progress without friction.
 https://play.google.com/store/apps/details?id=com.amadeusk.liftlog
 
@@ -9,8 +9,7 @@ https://play.google.com/store/apps/details?id=com.amadeusk.liftlog
 
 PRyx allows users to log strength training data and visualize progress through clean, lightweight graphs and a dashboard-style home screen.  
 
-- Core PR and bodyweight data is stored **locally on the device** using internal storage, ensuring privacy and reliable offline use.
-- An optional **live leaderboard** lets you submit proof-backed PRs for comparison; this feature uses a remote API but does not require an account.
+- PR and bodyweight data is stored **locally on the device** using internal storage, ensuring privacy and reliable offline use.
 
 The application includes three primary areas:
 
@@ -63,12 +62,6 @@ The codebase is organized to keep screens, UI components, charts, and utilities 
   - All time  
 - Graph displays automatically once enough data points are available
 
-### Live Leaderboard (optional)
-- Submit PRs with required proof (image or short video)  
-- Server-side validation before a PR is accepted  
-- See how your lifts compare on a live leaderboard  
-- Uses the same kg/lb unit selection as the rest of the app  
-
 ### Tools & Calculators
 - TDEE (maintenance calories)  
 - One-rep max estimates  
@@ -87,8 +80,7 @@ The codebase is organized to keep screens, UI components, charts, and utilities 
   - PR entries  
   - Bodyweight entries  
   - Unit and theme preferences  
-- No accounts and no cloud sync for your personal log history  
-- The live leaderboard feature communicates with a remote API only when you choose to submit or view leaderboard data
+- No accounts, no cloud sync, and no network access  
 
 ---
 
